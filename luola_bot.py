@@ -9,7 +9,11 @@ def start(update, context):
 
 # function to handle the /help command
 def help(update, context):
-    update.message.reply_text('Apuva! :D')
+    update.message.reply_text('Usage:\n/
+\/<rule-category> <rule>\n/
+<rule-category> can be eg. spell, condition or feature.\n/
+<rule> could be eg. hte spel \'Hunter\'s Mark\'\n/ 
+DnD 5e rules used by this bot come from http://www.dnd5eapi.co/')
 
 # function to handle errors occured in the dispatcher 
 def error(update, context):
