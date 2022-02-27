@@ -11,11 +11,13 @@ def start(update, context):
 
 # function to handle the /help command
 def help(update, context):
-    update.message.reply_text('''Usage:
+    update.message.reply_text('''Lousy bot that spits out DnD 5e rules:
+Usage:
 /<rule-category> <rule>
 <rule-category> can be eg. spell, condition or feature.
 <rule> could be eg. the spell Hunter\'s Mark or the feature rage.
-DnD 5e rules used by this bot come from http://www.dnd5eapi.co/''')
+Rules given by this bot come from http://www.dnd5eapi.co/
+Bot code can be found in: https://github.com/juuso22/luolaBot''')
 
 # function to handle errors occured in the dispatcher 
 def error(update, context):
