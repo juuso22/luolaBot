@@ -28,14 +28,14 @@ def class_5e(update, context):
     if len(split_msg) > 1:
         update.message.reply_text("Fetching class features. Ftm this takes a while.")
         class_name = ' '.join(split_msg[1:]).capitalize()
-        resp_text = f'{class_name}\n\nClass features:\n'
+        resp_text = f'{class_name}\n\n*Class features*:\n'
         class_received = '-'.join(split_msg[1:]).lower()
         all_features = req.get(f'{DND_API_URL}/features')
         for i in all_features.json()["results"]:
             f=req.get(f'https://www.dnd5eapi.co{i["url"]}').json()
             if f['class']['index'] == class_received:
                 resp_text = f'{resp_text}{f["name"]}, level: {f["level"]}\n'
-        update.message.reply_text(resp_text)
+        update.message.reply_text(resp_text, parse_mode='Markdown')
     else:
         update.message.reply_text("No class given.")
 
@@ -48,10 +48,10 @@ def monster(update, context):
         if monster_response.status_code == 200:
             monster_content=monster_response.json()
             #TODO: Should maybe check some the keys
-            resp_text=f'{monster_content["name"]}\n{monster_content["size"]} {monster_content["type"]}, {monster_content["alignment"]}\n\nActions:\n'
+            resp_text=f'*{monster_content["name"]}*\n{monster_content["size"]} {monster_content["type"]}, {monster_content["alignment"]}\n\n*Actions*:\n'
             for a in monster_content["actions"]:
-                resp_text=f'{resp_text}{a["name"]}: {a["desc"]}\n'
-            update.message.reply_text(f'{resp_text}')
+                resp_text=f'{resp_text}*{a["name"]}*: {a["desc"]}\n'
+            update.message.reply_text(f'{resp_text}', parse_mode='Markdown')
         else:
             update.message.reply_text(f'Could not get monster info from DnD API ({monster_response.status_code}). :(')
     else:
