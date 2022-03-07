@@ -23,6 +23,21 @@ Bot code can be found in: https://github.com/juuso22/luolaBot''')
 def error(update, context):
     update.message.reply_text('an error occured')
 
+def class_5e(update, context):
+    split_msg = update.message.text.split(' ')
+    if len(split_msg) > 1:
+        class_name = ' '.join(split_msg[1:]).capitalize()
+        resp_text = f'{class_name}\n\nClass features:\n'
+        class_received = '-'.join(split_msg[1:]).lower()
+        all_features = req.get(f'{DND_API_URL}/features')
+        for i in all_features.json()["results"]:
+            f=req.get(f'https://www.dnd5eapi.co{i["url"]}').json()
+            if f['class']['index'] == class_received:
+                resp_text = f'{resp_text}{f["name"]}, level: {f["level"]}\n'
+        update.message.reply_text(resp_text)
+    else:
+        update.message.reply_text("No class given.")
+
 # function to handle normal text 
 def text(update, context):
     text_received = update.message.text
@@ -54,6 +69,7 @@ def main():
     # add handlers for start and help commands
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
+    dispatcher.add_handler(CommandHandler("class", class_5e))
 
     # add an handler for normal text (not commands)
     dispatcher.add_handler(MessageHandler(Filters.text, text))
