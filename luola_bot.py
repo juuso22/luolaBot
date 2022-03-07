@@ -39,6 +39,24 @@ def class_5e(update, context):
     else:
         update.message.reply_text("No class given.")
 
+def monster(update, context):
+    parsed_text=update.message.text.split(' ')
+    if len(parsed_text) > 1:
+        rule_category=parsed_text[0]
+        monster='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
+        monster_response=req.get(f'{DND_API_URL}{rule_category}s/{monster}')
+        if monster_response.status_code == 200:
+            monster_content=monster_response.json()
+            #TODO: Should maybe check some the keys
+            resp_text=f'{monster_content["name"]}\n{monster_content["size"]} {monster_content["type"]}, {monster_content["alignment"]}\n\nActions:\n'
+            for a in monster_content["actions"]:
+                resp_text=f'{resp_text}{a["name"]}: {a["desc"]}\n'
+            update.message.reply_text(f'{resp_text}')
+        else:
+            update.message.reply_text(f'Could not get monster info from DnD API ({monster_response.status_code}). :(')
+    else:
+        update.message.reply_text('No monster given.')
+
 # function to handle normal text 
 def text(update, context):
     text_received = update.message.text
@@ -71,6 +89,7 @@ def main():
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
     dispatcher.add_handler(CommandHandler("class", class_5e))
+    dispatcher.add_handler(CommandHandler("monster", monster))
 
     # add an handler for normal text (not commands)
     dispatcher.add_handler(MessageHandler(Filters.text, text))
