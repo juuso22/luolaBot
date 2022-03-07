@@ -45,7 +45,7 @@ def text(update, context):
         parsed_text=text_received.split(' ')
         if parsed_text[0] not in FORBIDDEN_COMMANDS:
             rule_category=parsed_text[0]
-            rule='-'.join(parsed_text[1:]).replace('\'', '').lower()
+            rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
             rule_response=req.get(f'{DND_API_URL}{rule_category}s/{rule}')
             if rule_response.status_code == 200:
                 rule_content=rule_response.json()
