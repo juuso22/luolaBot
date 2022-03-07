@@ -26,6 +26,7 @@ def error(update, context):
 def class_5e(update, context):
     split_msg = update.message.text.split(' ')
     if len(split_msg) > 1:
+        update.message.reply_text("Fetching class features. Ftm this takes a while.")
         class_name = ' '.join(split_msg[1:]).capitalize()
         resp_text = f'{class_name}\n\nClass features:\n'
         class_received = '-'.join(split_msg[1:]).lower()
