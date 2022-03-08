@@ -23,58 +23,76 @@ Bot code can be found in: https://github.com/juuso22/luolaBot''')
 def error(update, context):
     update.message.reply_text('an error occured')
 
-def class_5e(update, context):
-    split_msg = update.message.text.split(' ')
-    if len(split_msg) > 1:
-        update.message.reply_text("Fetching class features. Ftm this takes a while.")
-        class_name = ' '.join(split_msg[1:]).capitalize()
-        resp_text = f'{class_name}\n\n*Class features*:\n'
-        class_received = '-'.join(split_msg[1:]).lower()
-        all_features = req.get(f'{DND_API_URL}/features')
-        for i in all_features.json()["results"]:
-            f=req.get(f'https://www.dnd5eapi.co{i["url"]}').json()
-            if f['class']['index'] == class_received:
-                resp_text = f'{resp_text}{f["name"]}, level: {f["level"]}\n'
-        update.message.reply_text(resp_text, parse_mode='Markdown')
-    else:
-        update.message.reply_text("No class given.")
+def class_5e(class_name):
+    resp_text = f'{class_name.capitalize()}\n\n*Class features*:\n'
+    all_features = req.get(f'{DND_API_URL}/features')
+    for i in all_features.json()["results"]:
+        f=req.get(f'https://www.dnd5eapi.co{i["url"]}').json()
+        if f['class']['index'] == class_name:
+            resp_text = f'{resp_text}{f["name"]}, level: {f["level"]}\n'
+    return(resp_text)
 
-def monster(update, context):
-    parsed_text=update.message.text.split(' ')
-    if len(parsed_text) > 1:
-        rule_category=parsed_text[0]
-        monster='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
-        monster_response=req.get(f'{DND_API_URL}{rule_category}s/{monster}')
-        if monster_response.status_code == 200:
-            monster_content=monster_response.json()
-            #TODO: Should maybe check some the keys
-            resp_text=f'*{monster_content["name"]}*\n{monster_content["size"]} {monster_content["type"]}, {monster_content["alignment"]}\n\n*Actions*:\n'
-            for a in monster_content["actions"]:
-                resp_text=f'{resp_text}*{a["name"]}*: {a["desc"]}\n'
-            update.message.reply_text(f'{resp_text}', parse_mode='Markdown')
-        else:
-            update.message.reply_text(f'Could not get monster info from DnD API ({monster_response.status_code}). :(')
-    else:
-        update.message.reply_text('No monster given.')
+def monster(monster_json):
+    #TODO: Should maybe check some the keys
+    resp_text=f'*{monster_json["name"]}*\n{monster_json["size"]} {monster_json["type"]}, {monster_json["alignment"]}\n\n*Actions*:\n'
+    for a in monster_json["actions"]:
+        resp_text=f'{resp_text}*{a["name"]}*: {a["desc"]}\n'
+    return(f'{resp_text}')
 
+def equipment(rule_json):
+    resp_text=f'*{rule_json["name"]}*'
+    if len(rule_json['desc']) != 0:
+        rule_desc='\n'.join(rule_json['desc'])
+        resp_text=f'{resp_text}\n{rule_desc}'
+    if rule_json['equipment_category']['index'] == 'weapon':
+        if 'damage' in rule_json.keys():
+            resp_text=f'{resp_text}\n{rule_json["damage"]["damage_dice"]} {rule_json["damage"]["damage_type"]["index"]} damage'
+    if rule_json['equipment_category']['index'] == 'armor':
+        ac_info=f'AC: {rule_json["armor_class"]["base"]}'
+        if rule_json["armor_class"]["dex_bonus"]:
+            ac_info=f'{ac_info} + Dex'
+        if rule_json["armor_class"]["max_bonus"] != None:
+            ac_info=f'{ac_info} (max {rule_json["armor_class"]["max_bonus"]})'
+        resp_text=f'{resp_text}\n{ac_info}'
+    if len(rule_json['special']) != 0:
+        special_rules='\n'.join(rule_json['special'])
+        resp_text=f'{resp_text}\n{special_rules}'
+    return(resp_text)
+
+def generic_command(rule_category, rule, rule_content_parser_func):
+    rule_response=req.get(f'{DND_API_URL}{rule_category}/{rule}')
+    if rule_response.status_code == 200:
+        return(rule_content_parser_func(rule_response.json()))
+    else:
+        return(f'Could not get {rule_category} from DnD API ({rule_response.status_code}). :(')
+
+def parse_simple_rule(rule_json):
+    rule_name=rule_json['name']
+    rule_desc='There is no description for this.'
+    if 'desc' in rule_json.keys():
+        rule_desc='\n'.join(rule_json['desc'])
+    return(f'*{rule_name}*\n{rule_desc}')
+        
 # function to handle normal text 
 def text(update, context):
     text_received = update.message.text
     if text_received.startswith('/'):
         parsed_text=text_received.split(' ')
         if parsed_text[0] not in FORBIDDEN_COMMANDS:
-            rule_category=parsed_text[0]
-            rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
-            rule_response=req.get(f'{DND_API_URL}{rule_category}s/{rule}')
-            if rule_response.status_code == 200:
-                rule_content=rule_response.json()
-                rule_name=rule_content['name']
-                rule_desc='There is no description for this.'
-                if 'desc' in rule_content.keys():
-                    rule_desc='\n'.join(rule_content['desc'])
-                update.message.reply_text(f'{rule_name}\n\n{rule_desc}')
-            else:
-                update.message.reply_text(f'Could not get rule from DnD API ({rule_response.status_code}). :(')
+           rule_category=parsed_text[0]
+           if len(parsed_text) > 1:               
+               rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
+               if rule_category == '/class':
+                   update.message.reply_text('Fetching class features. Ftm this takes a while.')
+                   update.message.reply_text(class_5e(rule), parse_mode='Markdown')
+               elif rule_category in ['/equipment', '/weapon', '/armor']:
+                   update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
+               elif rule_category == '/monster':
+                   update.message.reply_text(generic_command(f'{rule_category}s', rule, monster), parse_mode='Markdown')
+               else:
+                  update.message.reply_text(generic_command(f'{rule_category}s', rule, parse_simple_rule), parse_mode='Markdown')
+           else:
+               update.message.reply_text(f'No {rule_category} given.')
 
 def main():
     with open('token.txt', 'r') as file:
@@ -88,8 +106,6 @@ def main():
     # add handlers for start and help commands
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
-    dispatcher.add_handler(CommandHandler("class", class_5e))
-    dispatcher.add_handler(CommandHandler("monster", monster))
 
     # add an handler for normal text (not commands)
     dispatcher.add_handler(MessageHandler(Filters.text, text))
