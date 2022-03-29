@@ -1,4 +1,6 @@
+import asyncio
 import requests as req
+import aiohttp
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
@@ -23,17 +25,31 @@ Bot code can be found in: https://github.com/juuso22/luolaBot''')
 def error(update, context):
     update.message.reply_text('an error occured')
 
-def class_5e(class_name):
+async def get_request_json_response(session, url):
+    async with session.get(url) as resp:
+        return await resp.json()
+
+async def class_5e(class_name):
     resp_text = f'{class_name.capitalize()}\n\n*Class features*:\n'
     all_features = req.get(f'{DND_API_URL}/features')
-    for i in all_features.json()["results"]:
-        f=req.get(f'https://www.dnd5eapi.co{i["url"]}').json()
-        if f['class']['index'] == class_name:
-            resp_text = f'{resp_text}{f["name"]}, level: {f["level"]}\n'
+
+    class_features = []
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for i in all_features.json()["results"]:
+            url = f'https://www.dnd5eapi.co{i["url"]}'
+            tasks.append(asyncio.ensure_future(get_request_json_response(session, url)))
+
+        class_features = await asyncio.gather(*tasks)
+
+    for i in class_features:
+        if i['class']['index'] == class_name:
+            resp_text = f'{resp_text}{i["name"]}, level: {i["level"]}\n'
+    
     return(resp_text)
 
 def monster(monster_json):
-    #TODO: Should maybe check some the keys
+    #TODO: Should maybe check some of the keys
     resp_text=f'*{monster_json["name"]}*\n{monster_json["size"]} {monster_json["type"]}, {monster_json["alignment"]}\n\n*Actions*:\n'
     for a in monster_json["actions"]:
         resp_text=f'{resp_text}*{a["name"]}*: {a["desc"]}\n'
@@ -83,8 +99,8 @@ def text(update, context):
            if len(parsed_text) > 1:               
                rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
                if rule_category == '/class':
-                   update.message.reply_text('Fetching class features. Ftm this takes a while.')
-                   update.message.reply_text(class_5e(rule), parse_mode='Markdown')
+                   update.message.reply_text('Fetching class features. This takes a while.')
+                   update.message.reply_text(asyncio.run(class_5e(rule)), parse_mode='Markdown')
                elif rule_category in ['/equipment', '/weapon', '/armor']:
                    update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
                elif rule_category == '/monster':
