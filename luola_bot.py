@@ -67,7 +67,7 @@ def equipment(rule_json):
         ac_info=f'AC: {rule_json["armor_class"]["base"]}'
         if rule_json["armor_class"]["dex_bonus"]:
             ac_info=f'{ac_info} + Dex'
-        if rule_json["armor_class"]["max_bonus"] != None:
+        if "max_bonus" in rule_json["armor_class"].keys():
             ac_info=f'{ac_info} (max {rule_json["armor_class"]["max_bonus"]})'
         resp_text=f'{resp_text}\n{ac_info}'
     if len(rule_json['special']) != 0:
