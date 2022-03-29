@@ -99,7 +99,7 @@ def text(update, context):
            if len(parsed_text) > 1:               
                rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
                if rule_category == '/class':
-                   update.message.reply_text('Fetching class features. This takes a while.')
+                   update.message.reply_text('Fetching class features. This takes a moment.')
                    update.message.reply_text(asyncio.run(class_5e(rule)), parse_mode='Markdown')
                elif rule_category in ['/equipment', '/weapon', '/armor']:
                    update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
