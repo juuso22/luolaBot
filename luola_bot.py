@@ -16,7 +16,8 @@ def help(update, context):
     update.message.reply_text('''Lousy bot that spits out DnD 5e rules:
 Usage:
 /<rule-category> <rule>
-<rule-category> can be eg. spell, condition or feature.
+<rule-category> can be eg. spell, condition, feature or class.
+Special <rule-category> class-level allows to sort class features by level.
 <rule> could be eg. the spell Hunter\'s Mark or the feature rage.
 Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
@@ -25,11 +26,28 @@ Bot code can be found in: https://github.com/juuso22/luolaBot''')
 def error(update, context):
     update.message.reply_text('an error occured')
 
-async def get_request_json_response(session, url):
+async def get_class_feature_request_json_response(session, url, class_name):
     async with session.get(url) as resp:
-        return await resp.json()
+        resp_json = await resp.json()
+        if resp_json['class']['index'] == class_name:
+            return resp_json
 
-async def class_5e(class_name):
+def simple_class_feature(feat, resp_text):
+    return f'{resp_text}{feat["name"]}, level: {feat["level"]}\n'
+
+def class_feature_by_level(feat, level_map):
+    if not feat['level'] in level_map.keys():
+        level_map[feat['level']] = [feat['name']]
+    else:
+        level_map[feat['level']].append(feat['name'])
+    return level_map
+
+def loop_through_class_features(class_features, class_name, fun, iterable):
+    for i in class_features:
+        iterable = fun(i, iterable)
+    return iterable
+
+async def class_5e(class_name, representation):
     resp_text = f'{class_name.capitalize()}\n\n*Class features*:\n'
     all_features = req.get(f'{DND_API_URL}/features')
 
@@ -38,13 +56,18 @@ async def class_5e(class_name):
         tasks = []
         for i in all_features.json()["results"]:
             url = f'https://www.dnd5eapi.co{i["url"]}'
-            tasks.append(asyncio.ensure_future(get_request_json_response(session, url)))
+            tasks.append(asyncio.ensure_future(get_class_feature_request_json_response(session, url, class_name)))
 
-        class_features = await asyncio.gather(*tasks)
+        class_features = [ x for x in (await asyncio.gather(*tasks)) if x is not None]
 
-    for i in class_features:
-        if i['class']['index'] == class_name:
-            resp_text = f'{resp_text}{i["name"]}, level: {i["level"]}\n'
+    if representation == '/class-level':
+        level_map = loop_through_class_features(class_features, class_name, class_feature_by_level, {})
+        level_map = sorted(level_map.items())
+        for k, v in level_map:
+            feats = str(v).replace("[", "").replace("]", "").replace("'", "")
+            resp_text = f'{resp_text}\nLevel {k}:\n{feats}\n'
+    else:
+        resp_text = loop_through_class_features(class_features, class_name, simple_class_feature, resp_text)
     
     return(resp_text)
 
@@ -98,9 +121,9 @@ def text(update, context):
            rule_category=parsed_text[0]
            if len(parsed_text) > 1:               
                rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
-               if rule_category == '/class':
+               if rule_category.startswith('/class'):
                    update.message.reply_text('Fetching class features. This takes a moment.')
-                   update.message.reply_text(asyncio.run(class_5e(rule)), parse_mode='Markdown')
+                   update.message.reply_text(asyncio.run(class_5e(rule, rule_category)), parse_mode='Markdown')
                elif rule_category in ['/equipment', '/weapon', '/armor']:
                    update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
                elif rule_category == '/monster':
