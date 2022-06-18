@@ -116,21 +116,20 @@ def text(update, context):
     text_received = update.message.text
     if text_received.startswith('/'):
         parsed_text=text_received.split(' ')
-        if parsed_text[0] not in FORBIDDEN_COMMANDS:
-           rule_category=parsed_text[0]
-           if len(parsed_text) > 1:               
-               rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
-               if rule_category.startswith('/class'):
-                   update.message.reply_text('Fetching class features. This takes a moment.')
-                   update.message.reply_text(asyncio.run(class_5e(rule, rule_category)), parse_mode='Markdown')
-               elif rule_category in ['/equipment', '/weapon', '/armor']:
-                   update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
-               elif rule_category == '/monster':
-                   update.message.reply_text(generic_command(f'{rule_category}s', rule, monster), parse_mode='Markdown')
-               else:
-                  update.message.reply_text(generic_command(f'{rule_category}s', rule, parse_simple_rule), parse_mode='Markdown')
-           else:
-               update.message.reply_text(f'No {rule_category} given.')
+        rule_category=parsed_text[0]
+        if len(parsed_text) > 1:               
+            rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
+            if rule_category.startswith('/class'):
+                update.message.reply_text('Fetching class features. This takes a moment.')
+                update.message.reply_text(asyncio.run(class_5e(rule, rule_category)), parse_mode='Markdown')
+            elif rule_category in ['/equipment', '/weapon', '/armor']:
+                update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
+            elif rule_category == '/monster':
+                update.message.reply_text(generic_command(f'{rule_category}s', rule, monster), parse_mode='Markdown')
+            else:
+                update.message.reply_text(generic_command(f'{rule_category}s', rule, parse_simple_rule), parse_mode='Markdown')
+        else:
+            update.message.reply_text(f'No {rule_category} given.')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -141,8 +140,6 @@ def main():
         config_dir=args.config_dir
     with open('{}token.txt'.format(config_dir), 'r') as file:
         BOT_TOKEN=file.read().replace('\n', '')
-    with open('{}forbidden-commands.txt'.format(config_dir), 'r') as file:
-        FORBIDDEN_COMMANDS=file.read().split('\n')
 
     # create the updater, that will automatically create also a dispatcher and a queue to 
     # make them dialoge
