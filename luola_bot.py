@@ -133,7 +133,6 @@ def text(update, context):
                update.message.reply_text(f'No {rule_category} given.')
 
 def main():
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_dir", help="directory for config files")
     args = parser.parse_args()
