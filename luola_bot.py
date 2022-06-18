@@ -1,11 +1,10 @@
+import argparse
 import asyncio
 import requests as req
 import aiohttp
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
-with open('forbidden-commands.txt', 'r') as file:
-    FORBIDDEN_COMMANDS=file.read().split('\n')
 
 # function to handle the /start command
 def start(update, context):
@@ -134,8 +133,17 @@ def text(update, context):
                update.message.reply_text(f'No {rule_category} given.')
 
 def main():
-    with open('token.txt', 'r') as file:
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_dir", help="directory for config files")
+    args = parser.parse_args()
+    config_dir=''
+    if args.config_dir:
+        config_dir=args.config_dir
+    with open('{}token.txt'.format(config_dir), 'r') as file:
         BOT_TOKEN=file.read().replace('\n', '')
+    with open('{}forbidden-commands.txt'.format(config_dir), 'r') as file:
+        FORBIDDEN_COMMANDS=file.read().split('\n')
 
     # create the updater, that will automatically create also a dispatcher and a queue to 
     # make them dialoge
