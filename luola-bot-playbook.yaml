@@ -1,0 +1,48 @@
+- hosts: all
+  vars_prompt:
+    - name: bot_token
+      prompt: Give your bot token
+  tasks:
+  - name: Create /opt/luolabot
+    file:
+      path: /opt/luolabot
+      state: directory
+    become: true
+  - name: Copy luola_bot.py to /opt/luolabot
+    ansible.builtin.copy:
+      src: luola_bot.py
+      dest: /opt/luolabot/luola_bot.py
+      mode: '0644'
+    become: true
+  - name: Copy launch-luola-bot.sh to /opt/luolabot
+    ansible.builtin.copy:
+      src: launch-luola-bot.sh
+      dest: /opt/luolabot/launch-luola-bot.sh
+      mode: '0755'
+    become: true
+  - name: Copy luola-bot-manifest.yaml to /opt/luolabot
+    ansible.builtin.copy:
+      src: luola-bot-manifest.yaml
+      dest: /opt/luolabot/luola-bot-manifest.yaml
+      mode: '0644'
+    become: true
+  - name: Install kubernetes python library
+    pip:
+      name: kubernetes
+  - name: Generate k8s secret for bot token
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: bot-token
+          namespace: default
+        type: Opaque
+        data:
+          token.txt: |
+            {{ bot_token | b64encode }}
+  - name: Launch luolaBot using the k8s manifest
+    kubernetes.core.k8s:
+      state: present
+      src: /opt/luolabot/luola-bot-manifest.yaml
