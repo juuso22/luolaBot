@@ -8,7 +8,7 @@ DND_API_URL = "https://www.dnd5eapi.co/api"
 
 # function to handle the /start command
 def start(update, context):
-    update.message.reply_text('Aletaas luolaamaan!')
+    update.message.reply_text('Dime do dungeon!')
 
 # function to handle the /help command
 def help(update, context):
