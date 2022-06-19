@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: luolabot
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: luolabot
+  template:
+    metadata:
+      labels:
+        app: luolabot
+    spec:
+      containers:
+      - name: luolabot
+        image: python:latest
+        command: ['sh', '-c', '/code/launch-luola-bot.sh']
+        volumeMounts:
+        - name: bot-code
+          mountPath: /code
+        - name: bot-token
+          mountPath: /config
+          readOnly: true
+      volumes:
+      - name: bot-code
+        hostPath:
+          path: /home/ubuntu/luolaBot
+      - name: bot-token
+        secret:
+          secretName: bot-token
+          items:
+          - key: "token.txt"
+            path: "token.txt"
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
