@@ -3,6 +3,7 @@ import asyncio
 import requests as req
 import aiohttp
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+import time
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
 
@@ -131,7 +132,21 @@ def text(update, context):
         else:
             update.message.reply_text(f'No {rule_category} given.')
 
-def main():
+async def look_for_primary(timestamp):
+    if timestamp == -1:
+        return time.time()
+    else:
+        while True:
+            time.sleep(100)
+
+async def run_bot(updater):
+    # start your shiny new bot
+    updater.start_polling()
+    # run the bot until Ctrl-C
+    print("Running luolaBot as primary.")
+    updater.idle()
+
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_dir", help="directory for config files")
     args = parser.parse_args()
@@ -156,12 +171,27 @@ def main():
     # add an handler for errors
     dispatcher.add_error_handler(error)
 
-    # start your shiny new bot
-    print("Starting luolaBot. Press ctrl-c to stop it.")
-    updater.start_polling()
+    #Primary-backup model
+    #Start a thread that looks for primary
+    #Check if you are the primary
+    #In case you are not
+    #|
+    #|-If a primary is found, become backup, keep the check thread running and do nothing else
+    #|-If no primary is found claim to be primary and record the timestamp
+    #
+    #In case you are
+    #|
+    #|-If a lower timestamp primary is found, become backup, keep the check thread running and do nothing else
+    #|-If you turn out to be the highest primary, start idling until check thread finds lower timestamp primary
 
-    # run the bot until Ctrl-C
-    updater.idle()
+    print("Starting luolaBot. Press ctrl-c to stop it.")
+    primary_role_assumption_timestamp = -1
+    while True:
+        tasks=[asyncio.create_task(look_for_primary(primary_role_assumption_timestamp))]
+        if primary_role_assumption_timestamp != -1:
+            tasks.append(asyncio.create_task(run_bot(updater)))
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        primary_role_assumption_timestamp=tasks[0].result()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
