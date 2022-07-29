@@ -1,9 +1,12 @@
 import argparse
 import asyncio
-import requests as req
 import aiohttp
+from os.path import exists
+from asyncio.coroutines import sys
+import requests as req
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import time
+import yaml
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
 
@@ -132,18 +135,21 @@ def text(update, context):
         else:
             update.message.reply_text(f'No {rule_category} given.')
 
-async def look_for_primary(timestamp):
+async def look_for_primary(timestamp, instances):
     if timestamp == -1:
-        return time.time()
+        timestamp = time.time()
+        for instance in instances:
+            print(instance)
+        return timestamp
     else:
         while True:
-            time.sleep(100)
+            print("I'm test output, remove me!")
+            time.sleep(10)
 
 async def run_bot(updater):
     # start your shiny new bot
     updater.start_polling()
     # run the bot until Ctrl-C
-    print("Running luolaBot as primary.")
     updater.idle()
 
 async def main():
@@ -155,6 +161,13 @@ async def main():
         config_dir=args.config_dir
     with open('{}token.txt'.format(config_dir), 'r') as file:
         BOT_TOKEN=file.read().replace('\n', '')
+
+    settings = None
+    config_file = '{}luolabot.yaml'.format(config_dir)
+    if exists(config_file):
+        print("Using config file {}".format(config_file))
+        with open(config_file, 'r') as file:
+            settings = yaml.safe_load(file)                
 
     # create the updater, that will automatically create also a dispatcher and a queue to 
     # make them dialoge
@@ -187,11 +200,16 @@ async def main():
     print("Starting luolaBot. Press ctrl-c to stop it.")
     primary_role_assumption_timestamp = -1
     while True:
-        tasks=[asyncio.create_task(look_for_primary(primary_role_assumption_timestamp))]
+        instances = []
+        if settings != None and 'instances' in settings.keys():
+            instances = settings['instances']
+        tasks=[look_for_primary(primary_role_assumption_timestamp, instances)]
         if primary_role_assumption_timestamp != -1:
-            tasks.append(asyncio.create_task(run_bot(updater)))
-        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        primary_role_assumption_timestamp=tasks[0].result()
+            print("Node dedicated as primary with timestamp {}".format(primary_role_assumption_timestamp))
+            tasks.insert(0, run_bot(updater))
+        async_tasks=list(map(asyncio.create_task, tasks))
+        await asyncio.wait(async_tasks, return_when=asyncio.FIRST_COMPLETED)
+        primary_role_assumption_timestamp=async_tasks[0].result()
 
 if __name__ == '__main__':
     asyncio.run(main())
