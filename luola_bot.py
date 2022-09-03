@@ -1,16 +1,12 @@
 import argparse
 import asyncio
-from concurrent.futures import thread
 import aiohttp
 from os.path import exists
-import http.server
-import re
 import requests as req
 import socketserver
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import threading
-import time
 import yaml
+import habot
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
 socketserver.TCPServer.allow_reuse_address = True
@@ -140,151 +136,6 @@ def text(update, context):
         else:
             update.message.reply_text(f'No {rule_category} given.')
 
-class PrimaryLookUpRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, timestamp):
-        self.timestamp=timestamp
-
-    def __call__(self, request, client_address, server):
-        h = PrimaryLookUpRequestHandler(self.timestamp)
-        socketserver.StreamRequestHandler.__init__(h, request, client_address, server)
-
-    def do_GET(self):
-        timestamp_pattern = re.compile("[0-9].*\\.[0-9].*")
-        if re.fullmatch(timestamp_pattern, self.path.split('/')[-1]):
-            proposed_timestamp = self.path.split('/')[-1]
-            if float(proposed_timestamp) <= float(self.timestamp):
-                class KillThread(threading.Thread):
-                    def __init__(self, server):
-                        threading.Thread.__init__(self)
-                        self.server = server
-                    def run(self):
-                        self.server.shutdown()
-                self.send_response(200)
-                KillThread(self.server).start()
-            else:
-                self.send_error(500)
-        else:
-            self.send_error(500)
-
-class BotMainThread(threading.Thread):
-
-    def __init__(self, updater):
-        self.updater=updater
-        threading.Thread.__init__(self)
-
-    def run(self):
-        # start your shiny new bot
-        self.updater.start_polling()
-        # run the bot until Ctrl-C
-        self.updater.idle()
-
-def run_bot(updater):
-    # start your shiny new bot
-    updater.start_polling()
-    # run the bot until Ctrl-C
-    print("LuolaBot ready to answer queries!")
-    updater.idle()
-    print("LuolaBot stopped answering queries.")
-
-class PrimaryBroadcasterThread(threading.Thread):
-
-    def __init__(self, timestamp):
-        self.server=socketserver.TCPServer(("", 7175), PrimaryLookUpRequestHandler(timestamp))
-        threading.Thread.__init__(self)
-
-    def run(self):
-        print("Primary node serving primary lookup requests at port 7175.")
-        self.server.serve_forever()
-        print("Node ceased being primary.")
-
-class PrimaryLookupThread(threading.Thread):
-
-    def __init__(self, instances):
-        self.instances=instances
-        self.shutdown_signal=threading.Event()
-        threading.Thread.__init__(self)
-
-    def run(self):
-        self.look_for_primary(self.instances)
-
-    def look_for_primary(self, instances):
-        timestamp=time.time()
-        become_primary=False
-        while (not become_primary) & (not self.shutdown_signal.is_set()):
-            except_count=0
-            for instance in instances:
-                print("Trying to connect instance {}".format(instance))
-                try:
-                    addr = "http://{ins}:7175/{ts}".format(ins=instance, ts=timestamp)
-                    timestamp_resp = req.get(addr, timeout=10)
-                    if timestamp_resp.status_code == 200:
-                        print("Found instance {} with higher primary timestamp. Attempting to become primary instead.".format(instance))
-                        become_primary=True
-                        #Get until the previous primary has shut down
-                        while True:
-                            req.get(addr)
-                    else:
-                        print("Found instance {} with lower primary timestamp. Not attempting to become primary (if not one already).".format(instance))
-                        become_primary=False
-                except Exception as e:
-                    print("Could not connect to instance {}. Exception:".format(instance))
-                    print(e)
-                    except_count += 1
-            #If we failed to connect all other nodes but did not become primary, let's become primary anyway
-            if (except_count == len(instances)) & (become_primary == False):
-                print("Attempts to reach all other instances failed. Becoming primary.")
-                become_primary=True
-            #Let's wait a moment before retrying to find a primary
-            if become_primary == False:
-                print("Not becoming primary. Sleeping 10s before checking again.")
-                time.sleep(10)
-        if become_primary:
-            print("Node dedicated as primary with timestamp {}.".format(timestamp))
-        if self.shutdown_signal.is_set():
-            print("Primary lookup received signal to shut down.")
-
-class WatcherThread(threading.Thread):
-
-    def __init__(self, updater, lookup_thread, broadcast_thread):
-        self.updater=updater
-        self.lookup_thread=lookup_thread
-        self.broadcast_thread=broadcast_thread
-        threading.Thread.__init__(self)
-
-    def run(self):
-        while self.lookup_thread.is_alive() & self.broadcast_thread.is_alive():
-            print("All threads are running. Sleeping 10s before checking again.")
-            time.sleep(10)
-        self.updater.stop()
-        self.updater.is_idle = False
-        if self.broadcast_thread.is_alive():
-            self.broadcast_thread.server.shutdown()
-        if self.lookup_thread.is_alive():
-            self.lookup_thread.shutdown_signal.set()
-
-def run_bot_with_primary_backup_model(updater, instances):
-    print("Launching a lone primary lookup thread.")
-    primary_lookup_thread = PrimaryLookupThread(instances)
-    primary_lookup_thread.start()
-    while primary_lookup_thread.is_alive():
-        print("Primary lookup is ongoing. Sleeping 10s before checking again.")
-        time.sleep(10)
-    print("This node has been dedicated as primary. Starting the relevant threads.")
-    primary_broadcast_thread = PrimaryBroadcasterThread(time.time())
-    primary_broadcast_thread.start()
-    print("Broadcasting primary status.")
-    primary_primary_lookup_thread = PrimaryLookupThread(instances)
-    primary_primary_lookup_thread.start()
-    print("Looking up for other primaries.")
-    watcher_thread=WatcherThread(updater, primary_primary_lookup_thread, primary_broadcast_thread)
-    watcher_thread.start()
-    print("Watching the lookup and broadcasting threads.")
-    run_bot(updater)
-    if primary_broadcast_thread.is_alive():
-        primary_broadcast_thread.server.shutdown()
-    if primary_primary_lookup_thread.is_alive():
-        primary_primary_lookup_thread.shutdown_signal.set()
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_dir", help="directory for config files")
@@ -317,25 +168,12 @@ def main():
     # add an handler for errors
     dispatcher.add_error_handler(error)
 
-    #Primary-backup model
-    #Start a thread that looks for primary
-    #Check if you are the primary
-    #In case you are not
-    #|
-    #|-If a primary is found, become backup, keep the check thread running and do nothing else
-    #|-If no primary is found claim to be primary and record the timestamp
-    #
-    #In case you are
-    #|
-    #|-If a lower timestamp primary is found, become backup, keep the check thread running and do nothing else
-    #|-If you turn out to be the highest primary, start idling until check thread finds lower timestamp primary
-
     print("Starting luolaBot. Press ctrl-c to stop it.")
     instances = []
     if settings != None and 'instances' in settings.keys():
         instances = settings['instances']
     while True:
-        run_bot_with_primary_backup_model(updater, instances)
+        habot.bot.run_primary_backup_model(updater, instances)
 
 if __name__ == '__main__':
     main()
