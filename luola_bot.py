@@ -153,8 +153,6 @@ def main():
     config_dir=''
     if args.config_dir:
         config_dir=args.config_dir
-    with open('{}token.txt'.format(config_dir), 'r') as file:
-        BOT_TOKEN=file.read().replace('\n', '')
 
     settings = None
     config_file = '{}luolabot.yaml'.format(config_dir)
@@ -162,6 +160,13 @@ def main():
         logging.info("Using config file {}".format(config_file))
         with open(config_file, 'r') as file:
             settings = yaml.safe_load(file)
+    if settings == None:
+        logging.error("No settings could be read. Exiting.")
+        return
+    if settings["token"] == None:
+        logging.error("No bot token available in the config file :( Exiting.")
+        return
+    BOT_TOKEN=settings["token"]
 
     # create the updater, that will automatically create also a dispatcher and a queue to
     # make them dialoge
