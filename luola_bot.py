@@ -1,9 +1,11 @@
 import argparse
 import asyncio
 import aiohttp
+import logging
 from os.path import exists
 import requests as req
 import socketserver
+import sys
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import yaml
 import habot
@@ -137,6 +139,14 @@ def text(update, context):
             update.message.reply_text(f'No {rule_category} given.')
 
 def main():
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.INFO)
+    root_logger.addHandler(handler)
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_dir", help="directory for config files")
     args = parser.parse_args()
@@ -149,7 +159,7 @@ def main():
     settings = None
     config_file = '{}luolabot.yaml'.format(config_dir)
     if exists(config_file):
-        print("Using config file {}".format(config_file))
+        logging.info("Using config file {}".format(config_file))
         with open(config_file, 'r') as file:
             settings = yaml.safe_load(file)
 
@@ -168,7 +178,7 @@ def main():
     # add an handler for errors
     dispatcher.add_error_handler(error)
 
-    print("Starting luolaBot. Press ctrl-c to stop it.")
+    logging.info("Starting luolaBot. Press ctrl-c to stop it.")
     instances = []
     if settings != None and 'instances' in settings.keys():
         instances = settings['instances']
