@@ -12,9 +12,17 @@ Install prerequisite packages with pip:
 pip install requests
 pip install aiohttp
 pip install python-telegram-bot
+pip install pyyaml
+pip install -i https://test.pypi.org/simple/ habot
 ```
 
-Then clone this bot repo and create a file called `token.txt` which contains _only_ your bot token and run:
+Then clone this bot repo and create a file called `luolabot.yaml` which contains the following:
+
+```
+token: "<your-bot-token>"
+```
+
+and then run:
 
 ```
 python luola_bot.py

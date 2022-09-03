@@ -148,14 +148,13 @@ def main():
     root_logger.addHandler(handler)
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_dir", help="directory for config files")
+    parser.add_argument("--config", help="Config files. Defaults to luolabot.yaml on the directory from which the bot launch command is run.")
     args = parser.parse_args()
-    config_dir=''
-    if args.config_dir:
-        config_dir=args.config_dir
+    config_file="luolabot.yaml"
+    if args.config:
+        config_file=args.config
 
     settings = None
-    config_file = '{}luolabot.yaml'.format(config_dir)
     if exists(config_file):
         logging.info("Using config file {}".format(config_file))
         with open(config_file, 'r') as file:
@@ -163,7 +162,7 @@ def main():
     if settings == None:
         logging.error("No settings could be read. Exiting.")
         return
-    if settings["token"] == None:
+    if not 'token' in settings.keys():
         logging.error("No bot token available in the config file :( Exiting.")
         return
     BOT_TOKEN=settings["token"]
@@ -184,8 +183,8 @@ def main():
     dispatcher.add_error_handler(error)
 
     logging.info("Starting luolaBot. Press ctrl-c to stop it.")
-    instances = []
-    if settings != None and 'instances' in settings.keys():
+    instances = ['localhost']
+    if 'instances' in settings.keys():
         instances = settings['instances']
     while True:
         habot.bot.run_primary_backup_model(updater, instances)
