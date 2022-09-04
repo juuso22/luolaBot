@@ -1,10 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: luolabot
+  labels:
+    app: luolabot
+spec:
+  ports:
+  - port: 7175
+    name: web
+  clusterIP: None
+  selector:
+    app: luolabot
+---    
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: luolabot
   namespace: default
 spec:
-  replicas: 1
+  serviceName: "luolabot"
+  replicas: 2
   selector:
     matchLabels:
       app: luolabot
@@ -18,21 +33,21 @@ spec:
         image: python:latest
         command: ['sh', '-c', '/code/launch-luola-bot.sh']
         volumeMounts:
-        - name: bot-code
+        - name: luola-bot-code
           mountPath: /code
-        - name: bot-token
+        - name: luola-bot-config
           mountPath: /config
           readOnly: true
       volumes:
-      - name: bot-code
+      - name: luola-bot-code
         hostPath:
-          path: /opt/luolabot
-      - name: bot-token
+          path: {{pwd}}
+      - name: luola-bot-config
         secret:
-          secretName: bot-token
+          secretName: luola-bot-config
           items:
-          - key: "token.txt"
-            path: "token.txt"
+          - key: "luolabot.yaml"
+            path: "luolabot.yaml"
       tolerations:
       - key: "node-role.kubernetes.io/master"
         operator: "Exists"
