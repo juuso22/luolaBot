@@ -41,7 +41,7 @@ spec:
       volumes:
       - name: luola-bot-code
         hostPath:
-          path: {{pwd}}
+          path: /opt/luolabot
       - name: luola-bot-config
         secret:
           secretName: luola-bot-config
