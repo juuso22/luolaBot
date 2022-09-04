@@ -183,11 +183,11 @@ def main():
     dispatcher.add_error_handler(error)
 
     logging.info("Starting luolaBot. Press ctrl-c to stop it.")
-    instances = ['localhost']
     if 'instances' in settings.keys():
         instances = settings['instances']
-    while True:
         habot.bot.run_primary_backup_model(updater, instances)
+    else:
+        habot.bot.run_bot_only(updater)
 
 if __name__ == '__main__':
     main()
