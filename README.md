@@ -13,7 +13,7 @@ pip install requests
 pip install aiohttp
 pip install python-telegram-bot
 pip install pyyaml
-pip install -i https://test.pypi.org/simple/ habot
+pip install habot
 ```
 
 Then clone this bot repo and create a file called `luolabot.yaml` which contains the following:
