@@ -44,3 +44,12 @@ $ ansible-playbook -i hosts -u <your-ssh-user-on-the-target-node> --private-key 
 ```
 1. Give your bot token, when ansible prompts for it.
 1. Profit.
+
+## Development
+
+LuolaBot can be developped in a nix shell. 
+
+1. Install nix and direnv.
+2. Clone this directory.
+3. Allow direnv in this directory.
+4. `luolabot` as a "binary" with all its dependencies should be available for you inside a nix shell.

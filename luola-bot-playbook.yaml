@@ -20,11 +20,11 @@
       dest: /opt/luolabot/luola_bot.py
       mode: '0644'
     become: true
-  - name: Copy launch-luola-bot.sh to /opt/luolabot
+  - name: Copy default.nix to /opt/luolabot
     ansible.builtin.copy:
-      src: launch-luola-bot.sh
-      dest: /opt/luolabot/launch-luola-bot.sh
-      mode: '0755'
+      src: default.nix
+      dest: /opt/luolabot/default.nix
+      mode: '0644'
     become: true
   - name: Copy luola-bot-manifest.yaml to /opt/luolabot
     ansible.builtin.copy:

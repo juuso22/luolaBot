@@ -31,8 +31,8 @@ spec:
     spec:
       containers:
       - name: luolabot
-        image: python:latest
-        command: ['sh', '-c', '/code/launch-luola-bot.sh']
+        image: nixos/nix:latest
+        command: ['sh', '-c', 'nix-env -i -f /code/default.nix; luolabot --config /config/luolabot.yaml']
         volumeMounts:
         - name: luola-bot-code
           mountPath: /code
