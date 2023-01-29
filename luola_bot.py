@@ -1,4 +1,4 @@
-#!/bin/python
+#!/root/.nix-profile/bin/python3
 import argparse
 import asyncio
 import aiohttp
