@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: luolabot
+  namespace: default
+  labels:
+    app: luolabot
+spec:
+  ports:
+  - port: 7175
+    name: web
+  clusterIP: None
+  selector:
+    app: luolabot
+---    
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: luolabot
+  namespace: default
+spec:
+  serviceName: "luolabot"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: luolabot
+  template:
+    metadata:
+      labels:
+        app: luolabot
+    spec:
+      containers:
+      - command:
+        - luolabot
+        - --config
+        - /etc/luolabot/luolabot.yaml
+        name: luolabot
+        image: ghcr.io/juuso22/luolabot:latest
+        volumeMounts:
+        - name: luola-bot-config
+          mountPath: /etc/luolabot
+          readOnly: true
+      volumes:
+      - name: luola-bot-config
+        secret:
+          secretName: luola-bot-config
+          items:
+          - key: "luolabot.yaml"
+            path: "luolabot.yaml"
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
