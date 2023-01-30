@@ -4,6 +4,8 @@ import asyncio
 import aiohttp
 import logging
 from os.path import exists
+import random
+import re
 import requests as req
 import socketserver
 import sys
@@ -28,6 +30,21 @@ Special <rule-category> class-level allows to sort class features by level.
 <rule> could be eg. the spell Hunter\'s Mark or the feature rage.
 Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
+
+def calculate_roll(command):
+    command_components=command.replace(' ', '').split('+')
+    result=0
+    for component in command_components:
+        if re.match(r'[0-9].*d[0-9].*', component):
+            component_split = component.split('d')
+            for _ in range(0, int(component_split[0])):
+                result += random.randrange(1, int(component_split[1]), 1)
+        elif re.match(r'[0-9].*', component):
+            result += int(component)
+    return result
+
+def roll(update, context):
+    update.message.reply_text(calculate_roll(update.message.text.replace("/roll", "")))
 
 # function to handle errors occured in the dispatcher
 def error(update, context):
@@ -176,6 +193,7 @@ def main():
     # add handlers for start and help commands
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
+    dispatcher.add_handler(CommandHandler("roll", roll))
 
     # add an handler for normal text (not commands)
     dispatcher.add_handler(MessageHandler(Filters.text, text))
