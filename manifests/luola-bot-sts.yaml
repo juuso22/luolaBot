@@ -21,6 +21,7 @@ spec:
         - /etc/luolabot/luolabot.yaml
         name: luolabot
         image: ghcr.io/juuso22/luolabot:latest
+        imagePullPolicy: always
         volumeMounts:
         - name: luola-bot-config
           mountPath: /etc/luolabot
