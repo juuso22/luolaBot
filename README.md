@@ -16,6 +16,8 @@ pip install pyyaml
 pip install habot
 ```
 
+Get a Telegram bot token from botFather.
+
 Then clone this bot repo and create a file called `luolabot.yaml` which contains the following:
 
 ```
@@ -28,22 +30,27 @@ and then run:
 python luola_bot.py
 ```
 
-### The fancy way
+### Container way
 
-LuolaBot can also be deployed using to a k8s cluster using ansible. You need to have ansible installed. Also, make sure, you have a kubernetes cluster available and you you can ssh to a node on that cluster from which you can apply manifests to that cluster. Finally, you need to have root access with your ssh user to that node (I might change (fix?) this in the future).
+The repo contains a `Dockerfile` to build a nixos-based container image for luolabot. Additionally there is a k8s manifest to deploy that image as a stateful set and a manifest for the service needed with stateful sets. For a luolabot container to work a config file has to be mounted at `/etc/luolabot/luolabot.yaml`. When using k8s, the config should be stored as a secret called `luola-bot-config`. For configuration options, see the "Configuration" section below.
 
-NB1: The following ansible playbook will install kubernetes python library on your target node.
+## Configuration
 
-NB2: The luolaBot deployment pods are allowed on master node, because I'm lazy and run a single-node k8s cluster myself.
+Here is a schema for a luolabot yaml configuration file:
 
-1. Clone this repo.
-1. Inside the repo create a file called `hosts` which contains _only_ your chosen target node's ip/hostname.
-1. From inside this directory, run:
 ```
-$ ansible-playbook -i hosts -u <your-ssh-user-on-the-target-node> --private-key <private-key-for-the-ssh-user> luola-bot-playbook.yaml
+instances:
+  - <optional-list-of-instance-hostnames-or-ips-if-you-desire-to-run-"ha"-bot>
+  - <another-instance-hostname-or-ip>
+token: "<your-bot-token>"
+
 ```
-1. Give your bot token, when ansible prompts for it.
-1. Profit.
+
+By default, luolabot looks for a configfile called `luolabot.yaml` in the same directory where `luola_bot.py` resides. A custom directory can be set with the `--config` flag when running the bot eg.:
+
+```
+python luola_bot.py --config /path/to/config.yaml
+```
 
 ## Development
 

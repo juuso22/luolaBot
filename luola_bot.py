@@ -31,20 +31,20 @@ Special <rule-category> class-level allows to sort class features by level.
 Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
 
-def calculate_roll(command):
-    command_components=command.replace(' ', '').split('+')
+def calculate_roll(command, plus_char):
+    command_components=command.replace(' ', '').split(plus_char)
     result=0
     for component in command_components:
-        if re.match(r'[0-9].*d[0-9].*', component):
+        if re.match(r'[0-9]*d[0-9]*', component):
             component_split = component.split('d')
             for _ in range(0, int(component_split[0])):
                 result += random.randrange(1, int(component_split[1]), 1)
-        elif re.match(r'[0-9].*', component):
+        elif re.match(r'[0-9]*', component):
             result += int(component)
     return result
 
 def roll(update, context):
-    update.message.reply_text(calculate_roll(update.message.text.replace("/roll", "")))
+    update.message.reply_text(calculate_roll(update.message.text.replace("/roll", ""), '+'))
 
 # function to handle errors occured in the dispatcher
 def error(update, context):
@@ -136,25 +136,37 @@ def parse_simple_rule(rule_json):
         rule_desc='\n'.join(rule_json['desc'])
     return(f'*{rule_name}*\n{rule_desc}')
 
+def commandify_dice_notation(text):
+    dice_notation = re.compile(r'([a-zA-Z:,\.;]) \+([0-9]*)')
+    text = dice_notation.sub(r'\1 /r1d20p\2', text)
+    dice_notation = re.compile(r'([0-9]*d[0-9]*) \+ ([0-9]*)')
+    text = dice_notation.sub(r'/r\1p\2', text)
+    return text
+
 # function to handle normal text
 def text(update, context):
     text_received = update.message.text
-    if text_received.startswith('/'):
+    reply_text=""
+    if re.match("/r[0-9]*d[0-9]*p[0-9]*", text_received):
+        reply_text = str(calculate_roll(text_received.replace("/r", ''), 'p'))
+    elif text_received.startswith('/'):
         parsed_text=text_received.split(' ')
         rule_category=parsed_text[0]
         if len(parsed_text) > 1:
             rule='-'.join(parsed_text[1:]).replace('\'', '').replace('(', '').replace(')', '').replace(':', '').lower()
             if rule_category.startswith('/class'):
                 update.message.reply_text('Fetching class features. This takes a moment.')
-                update.message.reply_text(asyncio.run(class_5e(rule, rule_category)), parse_mode='Markdown')
+                reply_text = asyncio.run(class_5e(rule, rule_category))
             elif rule_category in ['/equipment', '/weapon', '/armor']:
-                update.message.reply_text(generic_command('/equipment', rule, equipment), parse_mode='Markdown')
+                reply_text = generic_command('/equipment', rule, equipment)
             elif rule_category == '/monster':
-                update.message.reply_text(generic_command(f'{rule_category}s', rule, monster), parse_mode='Markdown')
+                reply_text = generic_command(f'{rule_category}s', rule, monster)
             else:
-                update.message.reply_text(generic_command(f'{rule_category}s', rule, parse_simple_rule), parse_mode='Markdown')
+                reply_text = generic_command(f'{rule_category}s', rule, parse_simple_rule)
         else:
-            update.message.reply_text(f'No {rule_category} given.')
+            reply_text = f'No {rule_category} given.'
+    if reply_text != "":
+        update.message.reply_text(commandify_dice_notation(reply_text), parse_mode='Markdown')
 
 def main():
     root_logger = logging.getLogger()
