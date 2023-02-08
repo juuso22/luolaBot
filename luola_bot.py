@@ -147,7 +147,7 @@ def commandify_dice_notation(text):
 def text(update, context):
     text_received = update.message.text
     reply_text=""
-    if re.match("/r[0-9]*d[0-9]*p[0-9]*", text_received):
+    if re.match("/r[0-9]*d[0-9]*", text_received):
         reply_text = str(calculate_roll(text_received.replace("/r", ''), 'p'))
     elif text_received.startswith('/'):
         parsed_text=text_received.split(' ')
