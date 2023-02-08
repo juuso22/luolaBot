@@ -28,23 +28,32 @@ Usage:
 <rule-category> can be eg. spell, condition, feature or class.
 Special <rule-category> class-level allows to sort class features by level.
 <rule> could be eg. the spell Hunter\'s Mark or the feature rage.
+/roll xdy + z
+/rxdypz
 Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
 
 def calculate_roll(command, plus_char):
     command_components=command.replace(' ', '').split(plus_char)
-    result=0
+    results = []
     for component in command_components:
         if re.match(r'[0-9]*d[0-9]*', component):
             component_split = component.split('d')
             for _ in range(0, int(component_split[0])):
-                result += random.randrange(1, int(component_split[1]), 1)
+                results.append(random.randrange(1, int(component_split[1]), 1))
         elif re.match(r'[0-9]*', component):
-            result += int(component)
-    return result
+            results.append(int(component))
+    return results
+
+def array_to_roll_reply(roll_arr):
+    return "{} ({})".format(sum(roll_arr), str(roll_arr).replace('[', '').replace(']', ''))
+
+def generate_roll_reply(text, plus_char):
+    roll_arr = calculate_roll(text, plus_char)
+    return array_to_roll_reply(roll_arr)
 
 def roll(update, context):
-    update.message.reply_text(calculate_roll(update.message.text.replace("/roll", ""), '+'))
+    update.message.reply_text(generate_roll_reply(update.message.text.replace("/roll", ""), '+'))
 
 # function to handle errors occured in the dispatcher
 def error(update, context):
@@ -148,7 +157,7 @@ def text(update, context):
     text_received = update.message.text
     reply_text=""
     if re.match("/r[0-9]*d[0-9]*", text_received):
-        reply_text = str(calculate_roll(text_received.replace("/r", ''), 'p'))
+        reply_text = generate_roll_reply(text_received.replace("/r", ''), 'p')
     elif text_received.startswith('/'):
         parsed_text=text_received.split(' ')
         rule_category=parsed_text[0]
