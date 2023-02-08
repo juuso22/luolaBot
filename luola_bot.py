@@ -34,7 +34,7 @@ Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
 
 def calculate_roll(command, plus_char):
-    command_components=command.replace(' ', '').split(plus_char)
+    command_components=command.replace(' ', '').replace("@luolaBot", '').split(plus_char)
     results = []
     for component in command_components:
         if re.match(r'[0-9]*d[0-9]*', component):
