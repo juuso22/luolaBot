@@ -52,9 +52,6 @@ def generate_roll_reply(text, plus_char):
     roll_arr = calculate_roll(text, plus_char)
     return array_to_roll_reply(roll_arr)
 
-def roll(update, context):
-    update.message.reply_text(generate_roll_reply(update.message.text.replace("/roll", ""), '+'))
-
 # function to handle errors occured in the dispatcher
 def error(update, context):
     update.message.reply_text('an error occured')
@@ -216,7 +213,6 @@ def main():
     # add handlers for start and help commands
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
-    dispatcher.add_handler(CommandHandler("roll", roll))
 
     # add an handler for normal text (not commands)
     dispatcher.add_handler(MessageHandler(Filters.text, text))
