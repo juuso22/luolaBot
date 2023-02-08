@@ -150,6 +150,8 @@ def commandify_dice_notation(text):
     text = dice_notation.sub(r'\1 /r1d20p\2', text)
     dice_notation = re.compile(r'([0-9]*d[0-9]*) \+ ([0-9]*)')
     text = dice_notation.sub(r'/r\1p\2', text)
+    dice_notation = re.compile(r'([ \(])([0-9]*d[0-9]*)([ \)])')
+    text = dice_notation.sub(r'\1/r\2\3', text)
     return text
 
 # function to handle normal text
