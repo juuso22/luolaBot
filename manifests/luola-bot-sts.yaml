@@ -20,7 +20,7 @@ spec:
         - --config
         - /etc/luolabot/luolabot.yaml
         name: luolabot
-        image: ghcr.io/juuso22/luolabot:latest
+        image: ghcr.io/juuso22/luolabot:0.0.1
         imagePullPolicy: Always
         volumeMounts:
         - name: luola-bot-config
