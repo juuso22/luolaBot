@@ -3,3 +3,4 @@ hosts
 luolabot.yaml
 venv
 manual-testing/
+*.envrc

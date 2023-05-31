@@ -1,11 +1,11 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: luolabot
   namespace: default
 spec:
   serviceName: "luolabot"
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: luolabot
@@ -15,24 +15,23 @@ spec:
         app: luolabot
     spec:
       containers:
-      - command:
-        - luolabot
-        - --config
-        - /etc/luolabot/luolabot.yaml
-        name: luolabot
-        image: ghcr.io/juuso22/luolabot:0.0.4
+      - name: luolabot
+        image: ghcr.io/juuso22/luolabot-operator:0.0.1
         imagePullPolicy: Always
+        env:
+          - name: KUBECONFIG
+            value: "/kubeconf.yaml"
         volumeMounts:
-        - name: luola-bot-config
-          mountPath: /etc/luolabot
+        - name: luola-bot-kube-config
+          mountPath: /kubeconf.yaml
           readOnly: true
       volumes:
-      - name: luola-bot-config
+      - name: luola-bot-kube-config
         secret:
-          secretName: luola-bot-config
+          secretName: luola-bot-kube-config
           items:
-          - key: "luolabot.yaml"
-            path: "luolabot.yaml"
+          - key: "kubeconf.yaml"
+            path: "kubeconf.yaml"
       tolerations:
       - key: "node-role.kubernetes.io/master"
         operator: "Exists"
