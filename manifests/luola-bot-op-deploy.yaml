@@ -18,10 +18,10 @@ spec:
         image: ghcr.io/juuso22/luolabot-operator:0.0.1
         env:
           - name: KUBECONFIG
-            value: "/kubeconf.yaml"
+            value: "/kubeconf.yaml/kubeconf.yaml"
         volumeMounts:
         - name: luola-bot-kube-config
-          mountPath: /kubeconf.yaml/kubeconf.yaml
+          mountPath: /kubeconf.yaml
           readOnly: true
       volumes:
       - name: luola-bot-kube-config
