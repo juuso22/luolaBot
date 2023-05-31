@@ -1,18 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: luolabot
+  name: luolabot-operator
   namespace: default
 spec:
-  serviceName: "luolabot"
   replicas: 1
   selector:
     matchLabels:
-      app: luolabot
+      app: luolabot-operator
   template:
     metadata:
       labels:
-        app: luolabot
+        app: luolabot-operator
     spec:
       containers:
       - name: luolabot
