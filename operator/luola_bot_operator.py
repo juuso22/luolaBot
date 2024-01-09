@@ -1,6 +1,7 @@
 from kubernetes import client,config
 import base64
 import time
+import logging
 
 def fetch_bot_token(bot_resource):
     encoded_token = client.CoreV1Api().read_namespaced_secret(bot_resource["spec"]["botTokenSecret"], bot_resource["metadata"]["namespace"]).data["token"]
@@ -119,16 +120,27 @@ def check_k8s_resource_and_create_if_missing(resource_type, custom_resource, res
     resource_list_func = getattr(resource_api, "list_namespaced_{}".format(resource_type))
     resources = resource_list_func(custom_resource["metadata"]["namespace"])
     if not custom_resource["metadata"]["name"] in [resource.metadata.name for resource in resources.items]:
-        print("No resource {} was found, need to reconcile.".format(resource_type))
+        logging.info("No resource {} was found, need to reconcile.".format(resource_type))
         new_resource_object_func = globals()["new_luola_bot_{}".format(resource_type)]
         new_resource = new_resource_object_func(custom_resource)
         resource_create_func = getattr(resource_api, "create_namespaced_{}".format(resource_type))
         resource_create_func(body=new_resource, namespace=custom_resource["metadata"]["namespace"])
-        print("Resource {} reconciled.".format(resource_type))
+        logging.info("Resource {} reconciled.".format(resource_type))
     else:
-        print("Resource {} was found, no need to reconcile.".format(resource_type))
+        logging.info("Resource {} was found, no need to reconcile.".format(resource_type))
     
 def main():
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.INFO)
+    root_logger.addHandler(handler)
+
+    logging.info("Starting luolaBot operator.")
+
+    logging.info("Loading kube config.")
     config.load_kube_config()
 
     core_api = client.CoreV1Api()
@@ -145,7 +157,8 @@ def main():
         custom_object_api = client.CustomObjectsApi()
         luola_bot_resources = custom_object_api.list_cluster_custom_object(group="luolabot.tg", version="v1", plural="luolabots")
     
-        if "items" in luola_bot_resources.keys():        
+        if "items" in luola_bot_resources.keys():
+            logging.info("Found following luolabot custom resources: {}".format(luola_bot_resources["items"]))
             for luola_bot_resource in luola_bot_resources["items"]:
 
                 #Config
@@ -157,7 +170,9 @@ def main():
                 #Stateful set
                 check_k8s_resource_and_create_if_missing("stateful_set", luola_bot_resource, app_api)
 
-        time.sleep(60)
+        sleep_time=60
+        logging.info("Sleeping {} second before next check for new luolabot custom resources.".format(sleep_time))
+        time.sleep(sleep_time)
 
 if __name__ == '__main__':
     main()
