@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: luolabot
-        image: ghcr.io/juuso22/luolabot-operator:0.0.1
+        image: ghcr.io/juuso22/luolabot-operator:0.0.2
         env:
           - name: KUBECONFIG
             value: "/kubeconf.yaml/kubeconf.yaml"
