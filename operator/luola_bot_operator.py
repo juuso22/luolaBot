@@ -2,6 +2,7 @@ from kubernetes import client,config
 import base64
 import time
 import logging
+import sys
 
 def fetch_bot_token(bot_resource):
     encoded_token = client.CoreV1Api().read_namespaced_secret(bot_resource["spec"]["botTokenSecret"], bot_resource["metadata"]["namespace"]).data["token"]
