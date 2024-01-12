@@ -26,33 +26,28 @@ let
     };
   };
 
+  pythonDependencyList = pkgs.python310.withPackages (ps: [
+    ps.requests
+    ps.aiohttp
+    ps.python-telegram-bot
+    ps.pyyaml
+    habot
+  ]);
 
   luolabot = pkgs.stdenv.mkDerivation {
     name = "luolaBot";
     buildInputs = [
-      (pkgs.python310.withPackages (ps: [
-        ps.requests
-        ps.aiohttp
-        ps.python-telegram-bot
-        ps.pyyaml
-        habot
-      ]))
+      pythonDependencyList
     ];
     unpackPhase = "true";
     installPhase = ''
 mkdir -p $out/bin
 ln -sf ${./luola_bot.py} $out/bin/luolabot
-    '';           
+    '';
   };
     
 in
 [
   luolabot
-  (pkgs.python310.withPackages (ps: [
-        ps.requests
-        ps.aiohttp
-        ps.python-telegram-bot
-        ps.pyyaml
-        habot
-  ]))
+  pythonDependencyList
 ]
