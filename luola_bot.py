@@ -9,20 +9,22 @@ import re
 import requests as req
 import socketserver
 import sys
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram import Update
 import yaml
 import habot
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
+db_apis = [DND_API_URL]
 socketserver.TCPServer.allow_reuse_address = True
 
 # function to handle the /start command
-def start(update, context):
-    update.message.reply_text('Dime do dungeon!')
+async def start(update, context):
+    await update.message.reply_text('Dime do dungeon!')
 
 # function to handle the /help command
-def help(update, context):
-    update.message.reply_text('''Lousy bot that spits out DnD 5e rules:
+async def help(update, context):
+    await update.message.reply_text('''Lousy bot that spits out DnD 5e rules:
 Usage:
 /<rule-category> <rule>
 <rule-category> can be eg. spell, condition, feature or class.
@@ -53,8 +55,8 @@ def generate_roll_reply(text, plus_char):
     return array_to_roll_reply(roll_arr)
 
 # function to handle errors occured in the dispatcher
-def error(update, context):
-    update.message.reply_text('an error occured')
+async def error(update, context):
+    await update.message.reply_text('an error occured')
 
 async def get_class_feature_request_json_response(session, url, class_name):
     async with session.get(url) as resp:
@@ -152,7 +154,7 @@ def commandify_dice_notation(text):
     return text
 
 # function to handle normal text
-def text(update, context):
+async def text(update, context):
     text_received = update.message.text
     reply_text=""
     if re.match("/r[0-9]*d[0-9]*", text_received):
@@ -174,7 +176,7 @@ def text(update, context):
         else:
             reply_text = f'No {rule_category} given.'
     if reply_text != "":
-        update.message.reply_text(commandify_dice_notation(reply_text), parse_mode='Markdown')
+        await update.message.reply_text(commandify_dice_notation(reply_text), parse_mode='Markdown')
 
 def main():
     root_logger = logging.getLogger()
@@ -205,27 +207,25 @@ def main():
         return
     BOT_TOKEN=settings["token"]
 
-    # create the updater, that will automatically create also a dispatcher and a queue to
-    # make them dialoge
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dispatcher = updater.dispatcher
+    application = Application.builder().token(BOT_TOKEN).build()
 
-    # add handlers for start and help commands
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help))
 
     # add an handler for normal text (not commands)
-    dispatcher.add_handler(MessageHandler(Filters.text, text))
+    application.add_handler(MessageHandler(filters.TEXT, text))
 
     # add an handler for errors
-    dispatcher.add_error_handler(error)
+    application.add_error_handler(error)
 
     logging.info("Starting luolaBot. Press ctrl-c to stop it.")
-    if 'instances' in settings.keys():
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    """if 'instances' in settings.keys():
         instances = settings['instances']
-        habot.bot.run_primary_backup_model(updater, instances)
+        habot.bot.run_primary_backup_model(application, instances)
     else:
-        habot.bot.run_bot_only(updater)
+        habot.bot.run_bot_only(application)"""
 
 if __name__ == '__main__':
     main()
