@@ -133,7 +133,9 @@ def equipment(rule_json):
 def generic_command(rule_category, rule, rule_content_parser_func):
     errors = {}
     for api in db_apis:
-        rule_response=req.get(f'{api}{rule_category}/{rule}')
+        req_url = f'{api}{rule_category}/{rule}'
+        logging.info(f'Making GET request to: {re.sub(r":.*@", ":<password-hidden>@", req_url)}')
+        rule_response=req.get(req_url)
         if rule_response.status_code == 200:
             return(rule_content_parser_func(rule_response.json()))
         else:
@@ -181,6 +183,39 @@ async def text(update, context):
     if reply_text != "":
         await update.message.reply_text(commandify_dice_notation(reply_text), parse_mode='Markdown')
 
+def parse_config(config_file):
+    if exists(config_file):
+        logging.info("Using config file {}".format(config_file))
+        with open(config_file, 'r') as file:
+            settings = yaml.safe_load(file)
+            if settings == None:
+                logging.error("Could not read settings file.")
+                return None
+            if "token" not in settings.keys():
+                logging.error("No token was given in settings file.")
+                return None
+            if "db_apis" in settings.keys():
+                for api in settings["db_apis"]:
+                    if "url" not in api.keys():
+                        logging.error("Some db API did not have an URL.")
+                        return None
+            return settings
+
+def set_db_apis(settings):
+    api_list = db_apis
+    if ("disable_default_db_api" in settings.keys()) and (settings["disable_default_db_api"] == True):
+        logging.info(f'Default database API {DND_API_URL} will be disabled')
+        api_list = []
+    if "db_apis" in settings.keys():
+        for api in settings["db_apis"]:
+            new_api=api["url"]
+            logging.info("Adding a new db API: {}".format(api["url"]))
+            if ("username" in api.keys()) and ("password" in api.keys()):
+                new_api_split = new_api.split("://")
+                new_api="{}://{}:{}@{}".format(new_api_split[0], api["username"], api["password"], new_api_split[1])
+            api_list.append(new_api)
+    return api_list
+
 def main():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
@@ -197,20 +232,18 @@ def main():
     if args.config:
         config_file=args.config
 
-    settings = None
-    if exists(config_file):
-        logging.info("Using config file {}".format(config_file))
-        with open(config_file, 'r') as file:
-            settings = yaml.safe_load(file)
+    settings = parse_config(config_file)
     if settings == None:
-        logging.error("No settings could be read. Exiting.")
+        logging.error("Problem with settings. Exiting.")
         return
-    if not 'token' in settings.keys():
-        logging.error("No bot token available in the config file :( Exiting.")
-        return
-    BOT_TOKEN=settings["token"]
 
-    application = Application.builder().token(BOT_TOKEN).build()
+    db_apis = set_db_apis(settings)
+    if db_apis == []:
+        logging.error("Default database API was disabled and no custom APIs were defined. There is nothing to look data from, so I'm exiting.")
+        return
+    logging.info("Looking for data via the following APIs: {}".format(db_apis))
+
+    application = Application.builder().token(settings["token"]).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
