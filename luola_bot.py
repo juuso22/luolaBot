@@ -131,11 +131,14 @@ def equipment(rule_json):
     return(resp_text)
 
 def generic_command(rule_category, rule, rule_content_parser_func):
-    rule_response=req.get(f'{DND_API_URL}{rule_category}/{rule}')
-    if rule_response.status_code == 200:
-        return(rule_content_parser_func(rule_response.json()))
-    else:
-        return(f'Could not get {rule_category} from DnD API ({rule_response.status_code}). :(')
+    errors = {}
+    for api in db_apis:
+        rule_response=req.get(f'{api}{rule_category}/{rule}')
+        if rule_response.status_code == 200:
+            return(rule_content_parser_func(rule_response.json()))
+        else:
+            errors[api] = rule_response.status_code
+    return(f'Could not get {rule_category} from any of the defined APIs. Got the following errors: {errors}. :(')
 
 def parse_simple_rule(rule_json):
     rule_name=rule_json['name']
