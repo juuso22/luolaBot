@@ -12,7 +12,6 @@ import sys
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from telegram import Update
 import yaml
-import habot
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
 db_apis = [DND_API_URL]
@@ -256,12 +255,6 @@ def main():
 
     logging.info("Starting luolaBot. Press ctrl-c to stop it.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-    
-    """if 'instances' in settings.keys():
-        instances = settings['instances']
-        habot.bot.run_primary_backup_model(application, instances)
-    else:
-        habot.bot.run_bot_only(application)"""
 
 if __name__ == '__main__':
     main()
