@@ -9,24 +9,26 @@ def fetch_bot_secret(secret, namespace, data):
     return base64.b64decode(encoded_secret).decode("utf-8").replace('\n', '')
 
 def new_luola_bot_secret(luola_bot_resource):
-    token = fetch_bot_secret(luola_bot_resource["spec"]["botTokenSecret"], luola_bot_resource["metadata"]["namespace"], "token")
+    name = luola_bot_resource["metadata"]["name"]
+    namespace = luola_bot_resource["metadata"]["namespace"]
+    token = fetch_bot_secret(luola_bot_resource["spec"]["botTokenSecret"], namespace, "token")
     data = f'token: "{token}"'
     if "disable_default_db_api" in luola_bot_resource["spec"].keys():
         data = f'{data}\ndisable_default_db_api: {luola_bot_resource["spec"]["disable_default_db_api"]}'
     if "db_apis" in luola_bot_resource["spec"].keys():
         data = f'{data}\ndb_apis:\n'
-        for i, api in luola_bot_resource["spec"]["dp_apis"]:
+        for api in luola_bot_resource["spec"]["db_apis"]:
             data = f'{data}\n  - url: {api["url"]}'
-            if ("username" in api.keys()) and ("password" in api.keys()):
-                pw = fetch_bot_secret(luola_bot_resource["spec"]["db_apis"][i]["password"], luola_bot_resource["metadata"]["namespace"], "password")
+            if ("username" in api.keys()) and ("passwordSecret" in api.keys()):
+                pw = fetch_bot_secret(api["passwordSecret"], namespace, "password")
                 data = f'{data}\n    username: {api["username"]}\n    password: {pw}'
     return client.V1Secret(
         api_version = "v1",
         kind = "Secret",
         metadata = client.V1ObjectMeta(
-            name = luola_bot_resource["metadata"]["name"],
-            namespace = luola_bot_resource["metadata"]["namespace"],
-            labels = {"app": luola_bot_resource["metadata"]["name"]}
+            name = name,
+            namespace = namespace,
+            labels = {"app": name}
         ),
         data = {"luolabot.yaml": base64.b64encode(bytes(data, "utf-8")).decode("utf-8")}
     )
