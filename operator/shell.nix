@@ -5,5 +5,6 @@ in
 mkShell {
   buildInputs = [
     luola-bot-operator-packages
+    pkgs.k3s
   ];
 }
