@@ -4,17 +4,22 @@ import time
 import logging
 import sys
 
-def fetch_bot_token(bot_resource):
-    encoded_token = client.CoreV1Api().read_namespaced_secret(bot_resource["spec"]["botTokenSecret"], bot_resource["metadata"]["namespace"]).data["token"]
-    return base64.b64decode(encoded_token)
+def fetch_bot_secret(secret, namespace, data):
+    encoded_secret = client.CoreV1Api().read_namespaced_secret(secret, namespace).data[data]
+    return base64.b64decode(encoded_secret).decode("utf-8").replace('\n', '')
 
 def new_luola_bot_secret(luola_bot_resource):
-    token = fetch_bot_token(luola_bot_resource).decode("utf-8").replace('\n', '')
-    data = '''token: "{}"
-instances:'''.format(token)
-    for i in range(0, luola_bot_resource["spec"]["replicas"]):
-        data = '''{data}
-- {bot}-{i}.{bot}'''.format(data=data, bot=luola_bot_resource["metadata"]["name"], i=i)
+    token = fetch_bot_secret(luola_bot_resource["spec"]["botTokenSecret"], luola_bot_resource["metadata"]["namespace"], "token")
+    data = f'token: "{token}"'
+    if "disable_default_db_api" in luola_bot_resource["spec"].keys():
+        data = f'{data}\ndisable_default_db_api: {luola_bot_resource["spec"]["disable_default_db_api"]}'
+    if "db_apis" in luola_bot_resource["spec"].keys():
+        data = f'{data}\ndb_apis:\n'
+        for i, api in luola_bot_resource["spec"]["dp_apis"]:
+            data = f'{data}\n  - url: {api["url"]}'
+            if ("username" in api.keys()) and ("password" in api.keys()):
+                pw = fetch_bot_secret(luola_bot_resource["spec"]["db_apis"][i]["password"], luola_bot_resource["metadata"]["namespace"], "password")
+                data = f'{data}\n    username: {api["username"]}\n    password: {pw}'
     return client.V1Secret(
         api_version = "v1",
         kind = "Secret",
@@ -26,31 +31,10 @@ instances:'''.format(token)
         data = {"luolabot.yaml": base64.b64encode(bytes(data, "utf-8")).decode("utf-8")}
     )
 
-def new_luola_bot_service(luola_bot_resource):
-    return client.V1Service(
-        api_version = "v1",
-        kind = "Service",
-        metadata = client.V1ObjectMeta(
-            name = luola_bot_resource["metadata"]["name"],
-            namespace = luola_bot_resource["metadata"]["namespace"],
-            labels = {"app": luola_bot_resource["metadata"]["name"]}
-        ),
-        spec = client.V1ServiceSpec(
-            ports = [
-                client.V1ServicePort(
-                    port = 7175,
-                    name = "internal"
-                )
-            ],
-            cluster_ip = None,
-            selector = {"app": "{}".format(luola_bot_resource["metadata"]["name"])}
-        )
-    )
-
-def new_luola_bot_stateful_set(luola_bot_resource):
+def new_luola_bot_deployment(luola_bot_resource):
     return client.V1StatefulSet(
         api_version = "apps/v1",
-        kind = "StatefulSet",
+        kind = "Deployment",
         metadata = client.V1ObjectMeta(
             name = luola_bot_resource["metadata"]["name"],
             namespace = luola_bot_resource["metadata"]["namespace"],
@@ -58,7 +42,7 @@ def new_luola_bot_stateful_set(luola_bot_resource):
         ),
         spec = client.V1StatefulSetSpec(
             service_name = luola_bot_resource["metadata"]["name"],
-            replicas = luola_bot_resource["spec"]["replicas"],
+            replicas = 1,
             selector = client.V1LabelSelector(
                 match_labels = {"app": luola_bot_resource["metadata"]["name"]}
             ),
@@ -165,11 +149,8 @@ def main():
                 #Config
                 check_k8s_resource_and_create_if_missing("secret", luola_bot_resource, core_api)
 
-                #Service
-                check_k8s_resource_and_create_if_missing("service", luola_bot_resource, core_api)
-
-                #Stateful set
-                check_k8s_resource_and_create_if_missing("stateful_set", luola_bot_resource, app_api)
+                #Deployment
+                check_k8s_resource_and_create_if_missing("deployment", luola_bot_resource, app_api)
 
         sleep_time=60
         logging.info("Sleeping {} second before next check for new luolabot custom resources.".format(sleep_time))

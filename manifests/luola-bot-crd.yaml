@@ -21,10 +21,23 @@ spec:
         properties:
           spec:
             type: object
+            required: ["botTokenSecret"]
             properties:
-              replicas:
-                type: integer
               botTokenSecret:
                 type: string
               image:
                 type: string
+              disable_default_db_api:
+                type: boolean
+              db_apis:
+                type: array
+                items:
+                  type: object
+                  required: ["url"]
+                  properties:
+                    url:
+                      type: string
+                    username:
+                      type: string
+                    passwordSecret:
+                      type: string
