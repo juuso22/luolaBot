@@ -139,7 +139,7 @@ def generic_command(rule_category, rule, rule_content_parser_func):
     errors = {}
     for api in db_apis:
         req_url = f'{api}{rule_category}/{rule}'
-        logging.info(f'Making GET request to: {re.sub(r"://.*@", "://<password-hidden>@", req_url)}')
+        logging.info(f'Making GET request to: {re.sub(r":.*@", ":<password-hidden>@", req_url)}')
         rule_response=req.get(req_url)
         if rule_response.status_code == 200:
             return(rule_content_parser_func(rule_response.json()))
@@ -217,7 +217,7 @@ def set_db_apis(settings):
             logging.info("Adding a new db API: {}".format(api["url"]))
             if ("username" in api.keys()) and ("password" in api.keys()):
                 new_api_split = new_api.split("://")
-                new_api="{}://{}:<password-hidden>@{}".format(new_api_split[0], api["username"], new_api_split[1])
+                new_api="{}://{}:{}@{}".format(new_api_split[0], api["username"], api["password"], new_api_split[1])
             api_list.append(new_api)
     return api_list
 
@@ -246,7 +246,6 @@ def main():
     if db_apis == []:
         logging.error("Default database API was disabled and no custom APIs were defined. There is nothing to look data from, so I'm exiting.")
         return
-    logging.info("Looking for data via the following APIs: {}".format(db_apis))
 
     application = Application.builder().token(settings["token"]).build()
 
