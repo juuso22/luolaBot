@@ -103,8 +103,14 @@ async def class_5e(class_name, representation):
     return(resp_text)
 
 def monster(monster_json):
-    #TODO: Should maybe check some of the keys
-    resp_text=f'*{monster_json["name"]}*\n{monster_json["size"]} {monster_json["type"]}, {monster_json["alignment"]}\n\n*Actions*:\n'
+    resp_text=f'*{monster_json["name"]}*\n'
+    if "size" in monster_json.keys():
+        resp_text=f'{resp_text}{monster_json["size"]} '
+    if "type" in monster_json.keys():
+        resp_text=f'{resp_text} {monster_json["type"]} '
+    if "alignment" in monster_json.keys():
+        resp_text=f'{resp_text}{monster_json["alignment"]}'
+    resp_text=f'{resp_text}\n\n*Actions*:\n'
     for a in monster_json["actions"]:
         resp_text=f'{resp_text}*{a["name"]}*: {a["desc"]}\n'
     return(f'{resp_text}')
@@ -133,7 +139,7 @@ def generic_command(rule_category, rule, rule_content_parser_func):
     errors = {}
     for api in db_apis:
         req_url = f'{api}{rule_category}/{rule}'
-        logging.info(f'Making GET request to: {re.sub(r":.*@", ":<password-hidden>@", req_url)}')
+        logging.info(f'Making GET request to: {re.sub(r"://.*@", "://<password-hidden>@", req_url)}')
         rule_response=req.get(req_url)
         if rule_response.status_code == 200:
             return(rule_content_parser_func(rule_response.json()))
@@ -211,7 +217,7 @@ def set_db_apis(settings):
             logging.info("Adding a new db API: {}".format(api["url"]))
             if ("username" in api.keys()) and ("password" in api.keys()):
                 new_api_split = new_api.split("://")
-                new_api="{}://{}:{}@{}".format(new_api_split[0], api["username"], api["password"], new_api_split[1])
+                new_api="{}://{}:<password-hidden>@{}".format(new_api_split[0], api["username"], new_api_split[1])
             api_list.append(new_api)
     return api_list
 
