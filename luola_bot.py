@@ -16,6 +16,7 @@ import yaml
 
 DND_API_URL = "https://www.dnd5eapi.co/api"
 db_apis = [DND_API_URL]
+allowed_users = []
 socketserver.TCPServer.allow_reuse_address = True
 
 # function to handle the /start command
@@ -35,20 +36,35 @@ Special <rule-category> class-level allows to sort class features by level.
 Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
 
-async def add(update, context):
-    category = update.message.text.split()[1]
-    content = json.loads(update.message.text[len(category) + 6:])
-    reply = ""
-    if "name" not in content.keys():
-        reply = "No name in the content. Can't add this :("
-    else:
-        content["_id"] = content["name"].lower().replace("'", '').replace(' ' , '-')
-        headers = {"Content-Type": "application/json"}
-        resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"'), headers=headers)
-        if resp.status_code == 201:
-            reply = f"Added new content to the db: {content['name']}"
+def only_allowed_users(func):
+    async def check_allowed_users(*args, **kwargs):
+        user = args[0].message.from_user.username
+        if user in allowed_users:            
+            await func(*args, **kwargs)
         else:
-            reply = f"Problem adding new content to the db: {resp.status_code} :("
+            await args[0].message.reply_text(f'User {user} not in allowed users: {allowed_users}')
+    return check_allowed_users
+    
+@only_allowed_users
+async def add(update, context):
+    reply = ""
+    category = update.message.text.split()[1]
+    content = None
+    try:
+        content = json.loads(update.message.text[len(category) + 6:])
+    except:
+        reply = "Could not parse content to add. Does it exists and is it valid json?"
+    if content != None:
+        if "name" not in content.keys():
+            reply = "No name in the content. Can't add this :("
+        else:
+            content["_id"] = content["name"].lower().replace("'", '').replace(' ' , '-')
+            headers = {"Content-Type": "application/json"}
+            resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"'), headers=headers)
+            if resp.status_code == 201:
+                reply = f"Added new content to the db: {content['name']}"
+            else:
+                reply = f"Problem adding new content to the db: {resp.status_code} :("
     await update.message.reply_text(reply)
 
 def calculate_roll(command, plus_char):
@@ -239,6 +255,12 @@ def set_db_apis(settings):
             api_list.append(new_api)
     return api_list
 
+def set_allowed_users(settings):
+    if 'privileged_users' in settings.keys():
+        logging.info(f'Making the following users privileged: {settings["privileged_users"]}')
+        for user in settings['privileged_users']:
+            allowed_users.append(user)
+
 def main():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
@@ -264,6 +286,9 @@ def main():
     if db_apis == []:
         logging.error("Default database API was disabled and no custom APIs were defined. There is nothing to look data from, so I'm exiting.")
         return
+
+    set_allowed_users(settings)
+    logging.info(f'Privileged users are: {allowed_users}')
 
     application = Application.builder().token(settings["token"]).build()
 
