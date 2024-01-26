@@ -29,6 +29,10 @@ spec:
                 type: string
               disable_default_db_api:
                 type: boolean
+              privileged_users:
+                type: array
+                items:
+                  type: string
               db_apis:
                 type: array
                 items:

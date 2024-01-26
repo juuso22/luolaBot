@@ -16,12 +16,16 @@ def new_luola_bot_secret(luola_bot_resource):
     if "disable_default_db_api" in luola_bot_resource["spec"].keys():
         data = f'{data}\ndisable_default_db_api: {luola_bot_resource["spec"]["disable_default_db_api"]}'
     if "db_apis" in luola_bot_resource["spec"].keys():
-        data = f'{data}\ndb_apis:\n'
+        data = f'{data}\ndb_apis:'
         for api in luola_bot_resource["spec"]["db_apis"]:
             data = f'{data}\n  - url: {api["url"]}'
             if ("username" in api.keys()) and ("passwordSecret" in api.keys()):
                 pw = fetch_bot_secret(api["passwordSecret"], namespace, "password")
                 data = f'{data}\n    username: {api["username"]}\n    password: {pw}'
+    if "privileged_users" luola_bot_resource["spec"].keys():
+        data = f'{data}\nprivileged_users:'
+        for user in luola_bot_resource["spec"]["privileged_users"]:
+            data = f'{data}  - {user}'
     return client.V1Secret(
         api_version = "v1",
         kind = "Secret",
