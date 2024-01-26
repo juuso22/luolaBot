@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import aiohttp
+import json
 import logging
 from os.path import exists
 import random
@@ -33,6 +34,22 @@ Special <rule-category> class-level allows to sort class features by level.
 /rxdypz
 Rules given by this bot come from http://www.dnd5eapi.co/
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
+
+async def add(update, context):
+    category = update.message.text.split()[1]
+    content = json.loads(update.message.text[len(category) + 6:])
+    reply = ""
+    if "name" not in content.keys():
+        reply = "No name in the content. Can't add this :("
+    else:
+        content["_id"] = content["name"].lower().replace("'", '').replace(' ' , '-')
+        headers = {"Content-Type": "application/json"}
+        resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"'), headers=headers)
+        if resp.status_code == 201:
+            reply = f"Added new content to the db: {content['name']}"
+        else:
+            reply = f"Problem adding new content to the db: {resp.status_code} :("
+    await update.message.reply_text(reply)
 
 def calculate_roll(command, plus_char):
     command_components=command.replace(' ', '').replace("@luolaBot", '').split(plus_char)
@@ -117,20 +134,21 @@ def monster(monster_json):
 
 def equipment(rule_json):
     resp_text=f'*{rule_json["name"]}*'
-    if len(rule_json['desc']) != 0:
+    if ('desc' in rule_json.keys()) and (len(rule_json['desc']) != 0):
         rule_desc='\n'.join(rule_json['desc'])
         resp_text=f'{resp_text}\n{rule_desc}'
-    if rule_json['equipment_category']['index'] == 'weapon':
-        if 'damage' in rule_json.keys():
-            resp_text=f'{resp_text}\n{rule_json["damage"]["damage_dice"]} {rule_json["damage"]["damage_type"]["index"]} damage'
-    if rule_json['equipment_category']['index'] == 'armor':
-        ac_info=f'AC: {rule_json["armor_class"]["base"]}'
-        if rule_json["armor_class"]["dex_bonus"]:
-            ac_info=f'{ac_info} + Dex'
-        if "max_bonus" in rule_json["armor_class"].keys():
-            ac_info=f'{ac_info} (max {rule_json["armor_class"]["max_bonus"]})'
-        resp_text=f'{resp_text}\n{ac_info}'
-    if len(rule_json['special']) != 0:
+    if ('equipment_category' in rule_json.keys()) and ('index' in rule_json['equipment_category'].keys()):
+        if rule_json['equipment_category']['index'] == 'weapon':
+            if 'damage' in rule_json.keys():
+                resp_text=f'{resp_text}\n{rule_json["damage"]["damage_dice"]} {rule_json["damage"]["damage_type"]["index"]} damage'
+        if rule_json['equipment_category']['index'] == 'armor':
+            ac_info=f'AC: {rule_json["armor_class"]["base"]}'
+            if rule_json["armor_class"]["dex_bonus"]:
+                ac_info=f'{ac_info} + Dex'
+            if "max_bonus" in rule_json["armor_class"].keys():
+                ac_info=f'{ac_info} (max {rule_json["armor_class"]["max_bonus"]})'
+            resp_text=f'{resp_text}\n{ac_info}'
+    if ('special' in rule_json.keys()) and (len(rule_json['special']) != 0):
         special_rules='\n'.join(rule_json['special'])
         resp_text=f'{resp_text}\n{special_rules}'
     return(resp_text)
@@ -251,6 +269,7 @@ def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
+    application.add_handler(CommandHandler("add", add))
 
     # add an handler for normal text (not commands)
     application.add_handler(MessageHandler(filters.TEXT, text))
