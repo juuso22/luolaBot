@@ -44,16 +44,31 @@ def only_allowed_users(func):
         else:
             await args[0].message.reply_text(f'User {user} not in allowed users: {allowed_users}')
     return check_allowed_users
-    
-@only_allowed_users
-async def add(update, context):
-    reply = ""
-    category = update.message.text.split()[1]
+
+def get_category(command):
+    command_split = command.split()
+    if len(command_split) < 2:
+        return None
+    return command_split[1]
+
+def create_category_if_missing(category, reply):
+    resp_code = req.post(f"{db_apis[1]}/{category}").status_code
+    if resp_code == 404:
+        #TODO: error handling below
+        req.put(f"{db_apis[1]}/{category}")
+        reply = f'Added new category: {category}\n'
+    elif resp_code != 200:
+        reply = f'Problem adding new category: {category}. HTTP status from db: {resp_code}\n'
+    else:
+        reply = ''
+    return reply
+
+def add_content(command, category, reply, help):
     content = None
     try:
-        content = json.loads(update.message.text[len(category) + 6:])
+        content = json.loads(command[len(category) + 6:])
     except:
-        reply = "Could not parse content to add. Does it exists and is it valid json?"
+        reply = f'{reply}Could not parse content to add. Does it exists and is it valid json?\n\n{help}'
     if content != None:
         if "name" not in content.keys():
             reply = "No name in the content. Can't add this :("
@@ -62,9 +77,21 @@ async def add(update, context):
             headers = {"Content-Type": "application/json"}
             resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"'), headers=headers)
             if resp.status_code == 201:
-                reply = f"Added new content to the db: {content['name']}"
+                reply = f"{reply}Added new content to the db: {content['name']}"
             else:
-                reply = f"Problem adding new content to the db: {resp.status_code} :("
+                reply = f'{reply}Problem adding new content to the db: {resp.status_code} :('
+    return reply
+
+@only_allowed_users
+async def add(update, context):
+    help = 'Usage /add <category-of-the-new-thing-to-add-eg-equipment-or-monsters> <data-in-json>\nThe <data-in-json> needs to have at least name as attribute. There might be additional fields needed when displaying the newly added content. I will try to handle these in the future.\nExample: /add monsters {"name": "Peijooni", "actions": [{"name": "Claw attack", "desc": "1d6 + 2 piercing damage"}]}'
+    reply = help
+    category = get_category(update.message.text)
+    if category == None:
+        reply = f'Category was missing.\n\n{reply}'
+    else:
+        reply = create_category_if_missing(category, reply)
+        reply = add_content(update.message.text, category, reply, help)
     await update.message.reply_text(reply)
 
 def calculate_roll(command, plus_char):
