@@ -42,7 +42,7 @@ def only_allowed_users(func):
         if user in allowed_users:            
             await func(*args, **kwargs)
         else:
-            await args[0].message.reply_text(f'User {user} not in allowed users: {allowed_users}')
+            await args[0].message.reply_text(f'User {user} not in allowed users.')
     return check_allowed_users
 
 def get_category(command):
