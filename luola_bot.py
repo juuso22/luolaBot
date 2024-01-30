@@ -52,7 +52,7 @@ def get_category(command):
     return command_split[1]
 
 def create_category_if_missing(category, reply):
-    resp_code = req.post(f"{db_apis[1]}/{category}").status_code
+    resp_code = req.get(f"{db_apis[1]}/{category}").status_code
     if resp_code == 404:
         #TODO: error handling below
         req.put(f"{db_apis[1]}/{category}")
