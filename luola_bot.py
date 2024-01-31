@@ -33,7 +33,8 @@ Special <rule-category> class-level allows to sort class features by level.
 <rule> could be eg. the spell Hunter\'s Mark or the feature rage.
 /roll xdy + z
 /rxdypz
-Rules given by this bot come from http://www.dnd5eapi.co/
+Rules given by this bot come by default from http://www.dnd5eapi.co/
+Additional rule dbs can be defined and interacted with. See the README in the GitHub repo for details.
 Bot code can be found in: https://github.com/juuso22/luolaBot''')
 
 def only_allowed_users(func):
@@ -82,6 +83,26 @@ def add_content(command, category, reply, help):
                 reply = f'{reply}Problem adding new content to the db: {resp.status_code} :('
     return reply
 
+def delete_content(url, reply, help):
+    revision = req.get(url).json()['_rev']
+    del_response_code = req.get(f'{url}?rev={revision}').status_code
+    if del_response_code == 200:
+        reply = f'Content deleted'
+    else:
+        reply = f'Problem deleting content: {del_response_code}\n\n{help}'
+    return reply
+
+def check_content_existence(url):
+    content_exists_code = req.get(url).status_code
+    reply = ''
+    exists = True
+    if content_exists_code != 200:
+        exists = False
+        reply = f'Problem with content: {re.sub(r":[^/].*@", ":<password-hidden>@", url)}, HTTP status code: {content_exists_code}'
+        if content_exists_code == 404:
+            reply += ', content does not exist'
+    return reply, exists
+
 @only_allowed_users
 async def add(update, context):
     help = 'Usage /add <category-of-the-new-thing-to-add-eg-equipment-or-monsters> <data-in-json>\nThe <data-in-json> needs to have at least name as attribute. There might be additional fields needed when displaying the newly added content. I will try to handle these in the future.\nExample: /add monsters {"name": "Peijooni", "actions": [{"name": "Claw attack", "desc": "1d6 + 2 piercing damage"}]}'
@@ -92,6 +113,28 @@ async def add(update, context):
     else:
         reply = create_category_if_missing(category, reply)
         reply = add_content(update.message.text, category, reply, help)
+    await update.message.reply_text(reply)
+
+@only_allowed_users
+async def rm(update, context):
+    help = 'Usage: /rm <category-of-the-new-thing-to-add-eg-equipment-or-monsters> <name-or-index-of-the-object-to-be-deleted>'
+    reply = help
+    category = get_category(update.message.text)
+    category_reply, category_exists = check_content_existence(f"{db_apis[1]}/{category}")
+    if not category_exists:
+        reply = f'{category_reply}\n\n{reply}'
+    else:
+        message_split = update.message.text.split()
+        if len(message_split) < 3:
+            reply = f'No content to delete.\n\n{reply}'
+        else:
+            index = message_split[2].lower().replace("'", '').replace(' ' , '-')
+            content_url = f"{db_apis[1]}/{category}/{index}"
+            content_reply, content_exists = check_content_existence(content_url)
+            if not content_exists:
+                reply = f'{content_reply}\n\n{reply}'
+            else:
+                reply = delete_content(content_url, reply, help)
     await update.message.reply_text(reply)
 
 def calculate_roll(command, plus_char):
@@ -205,7 +248,7 @@ def generic_command(rule_category, rule, rule_content_parser_func):
         if rule_response.status_code == 200:
             return(rule_content_parser_func(rule_response.json()))
         else:
-            errors[api] = rule_response.status_code
+            errors[re.sub(r':[^/].*@', ':<password-hidden>@', api)] = rule_response.status_code
     return(f'Could not get {rule_category} from any of the defined APIs. Got the following errors: {errors}. :(')
 
 def parse_simple_rule(rule_json):
@@ -322,6 +365,7 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help))
     application.add_handler(CommandHandler("add", add))
+    application.add_handler(CommandHandler("rm", rm))
 
     # add an handler for normal text (not commands)
     application.add_handler(MessageHandler(filters.TEXT, text))
