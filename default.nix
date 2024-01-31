@@ -8,21 +8,6 @@ let
     ps.pyyaml
   ]);
 
-  luolabot = pkgs.stdenv.mkDerivation {
-    name = "luolaBot";
-    buildInputs = [
-      pythonDependencyList
-    ];
-    unpackPhase = "true";
-    installPhase = ''
-mkdir -p $out/bin
-ln -sf ${./luola_bot.py} $out/bin/luolabot
-    '';
-  };
-    
 in
-[
-  luolabot
-  pythonDependencyList
-  pkgs.couchdb3
-]
+pythonDependencyList
+

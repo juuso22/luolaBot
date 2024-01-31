@@ -4,6 +4,9 @@ let
 in
 mkShell {
   buildInputs = [
-    luola-bot-packages
+    [
+      luola-bot-packages
+      pkgs.couchdb3
+    ]
   ];
 }
