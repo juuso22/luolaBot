@@ -66,7 +66,7 @@ def create_category_if_missing(category, reply):
 def add_content(command, category, reply, help):
     content = None
     try:
-        content = json.loads(command[len(category) + 6:].replcae("'", "’"))
+        content = json.loads(command[len(category) + 6:].replace("'", "’"))
     except:
         reply = f'{reply}Could not parse content to add. Does it exists and is it valid json?\n\n{help}'
     if content != None:
