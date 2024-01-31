@@ -66,7 +66,7 @@ def create_category_if_missing(category, reply):
 def add_content(command, category, reply, help):
     content = None
     try:
-        content = json.loads(command[len(category) + 6:])
+        content = json.loads(command[len(category) + 6:].replcae("'", "’"))
     except:
         reply = f'{reply}Could not parse content to add. Does it exists and is it valid json?\n\n{help}'
     if content != None:
@@ -75,7 +75,7 @@ def add_content(command, category, reply, help):
         else:
             content["_id"] = content["name"].lower().replace("'", '').replace(' ' , '-')
             headers = {"Content-Type": "application/json"}
-            resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"'), headers=headers)
+            resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"').replace("’", "'"), headers=headers)
             if resp.status_code == 201:
                 reply = f"{reply}Added new content to the db: {content['name']}"
             else:
