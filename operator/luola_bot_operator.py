@@ -22,10 +22,10 @@ def new_luola_bot_secret(luola_bot_resource):
             if ("username" in api.keys()) and ("passwordSecret" in api.keys()):
                 pw = fetch_bot_secret(api["passwordSecret"], namespace, "password")
                 data = f'{data}\n    username: {api["username"]}\n    password: {pw}'
-    if "privileged_users" luola_bot_resource["spec"].keys():
+    if "privileged_users" in luola_bot_resource["spec"].keys():
         data = f'{data}\nprivileged_users:'
         for user in luola_bot_resource["spec"]["privileged_users"]:
-            data = f'{data}  - {user}'
+            data = f'{data}\n  - {user}'
     return client.V1Secret(
         api_version = "v1",
         kind = "Secret",
