@@ -176,7 +176,7 @@ def main():
                     reconciled_resources.append("deployment")
 
         sleep_time=15
-        logging.info("Sleeping {} second before next check for new luolabot custom resources.".format(sleep_time))
+        logging.info("Sleeping {} seconds before next check for new luolabot custom resources.".format(sleep_time))
         time.sleep(sleep_time)
 
 if __name__ == '__main__':
