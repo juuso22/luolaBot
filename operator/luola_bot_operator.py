@@ -107,18 +107,28 @@ def new_luola_bot_deployment(luola_bot_resource):
         )
     )
 
-def check_k8s_resource_and_create_if_missing(resource_type, custom_resource, resource_api):
+def create_resource(resource_type, custom_resource, resource_api):
+    logging.info("(Re-)Creating resource {}.".format(resource_type))
+    new_resource_object_func = globals()["new_luola_bot_{}".format(resource_type)]
+    new_resource = new_resource_object_func(custom_resource)
+    resource_create_func = getattr(resource_api, "create_namespaced_{}".format(resource_type))
+    resource_create_func(body=new_resource, namespace=custom_resource["metadata"]["namespace"])
+    logging.info("Resource {} created.".format(resource_type))
+    return True
+
+def check_k8s_resource_and_create_if_missing(resource_type, custom_resource, resource_api, force_reconciliation=False):
     resource_list_func = getattr(resource_api, "list_namespaced_{}".format(resource_type))
     resources = resource_list_func(custom_resource["metadata"]["namespace"])
-    if not custom_resource["metadata"]["name"] in [resource.metadata.name for resource in resources.items]:
-        logging.info("No resource {} was found, need to reconcile.".format(resource_type))
-        new_resource_object_func = globals()["new_luola_bot_{}".format(resource_type)]
-        new_resource = new_resource_object_func(custom_resource)
-        resource_create_func = getattr(resource_api, "create_namespaced_{}".format(resource_type))
-        resource_create_func(body=new_resource, namespace=custom_resource["metadata"]["namespace"])
-        logging.info("Resource {} reconciled.".format(resource_type))
+    deployment_exists = custom_resource["metadata"]["name"] in [resource.metadata.name for resource in resources.items]
+    if deployment_exists and force_reconciliation:
+        resource_del_func = getattr(resource_api, "delete_namespaced_{}".format(resource_type))
+        resource_del_func(name=custom_resource["metadata"]["name"], namespace=custom_resource["metadata"]["namespace"])
+        return create_resource(resource_type, custom_resource, resource_api)
+    elif not deployment_exists:
+        return create_resource(resource_type, custom_resource, resource_api)
     else:
-        logging.info("Resource {} was found, no need to reconcile.".format(resource_type))
+        logging.info("No need to do anything about resource {}.".format(resource_type))
+        return False
     
 def main():
     root_logger = logging.getLogger()
@@ -152,13 +162,20 @@ def main():
             logging.info("Found following luolabot custom resources: {}".format(luola_bot_resources["items"]))
             for luola_bot_resource in luola_bot_resources["items"]:
 
+                reconciled_resources = []
+                
                 #Config
-                check_k8s_resource_and_create_if_missing("secret", luola_bot_resource, core_api)
+                if check_k8s_resource_and_create_if_missing("secret", luola_bot_resource, core_api):
+                    reconciled_resources.append("secret")
 
                 #Deployment
-                check_k8s_resource_and_create_if_missing("deployment", luola_bot_resource, app_api)
+                force_deployment_reconciliation = False
+                if "secret" in reconciled_resources:
+                    force_deployment_reconciliation = True
+                if check_k8s_resource_and_create_if_missing("deployment", luola_bot_resource, app_api, force_reconciliation=force_deployment_reconciliation):
+                    reconciled_resources.append("deployment")
 
-        sleep_time=60
+        sleep_time=15
         logging.info("Sleeping {} second before next check for new luolabot custom resources.".format(sleep_time))
         time.sleep(sleep_time)
 
