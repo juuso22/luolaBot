@@ -137,4 +137,3 @@ LuolaBot can be developped in a nix shell.
 ## TODO
 
 1. Make `db_apis.writable` to actually have some effect.
-2. Have operator automatically update the config secret and restart the luolabot pod if luolabot CRD is changed.

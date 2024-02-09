@@ -129,7 +129,16 @@ def check_k8s_resource_and_create_if_missing(resource_type, custom_resource, res
     else:
         logging.info("No need to do anything about resource {}.".format(resource_type))
         return False
-    
+
+def check_custom_resource_changes(luola_bot_resource, previous_luola_bot_resources):
+    for previous_luola_bot_resource in previous_luola_bot_resources:
+        if (luola_bot_resource["metadata"]["uid"] == previous_luola_bot_resource["metadata"]["uid"]) \
+           and ((luola_bot_resource["metadata"]["creationTimestamp"] != previous_luola_bot_resource["metadata"]["creationTimestamp"]) \
+                or (luola_bot_resource["metadata"]["generation"] != previous_luola_bot_resource["metadata"]["generation"])):
+            logging.info(f'Changes detected in luolabot resource with name {luola_bot_resource["metadata"]["name"]} and uid {luola_bot_resource["metadata"]["uid"]}')
+            return True
+    return False
+
 def main():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
@@ -147,6 +156,9 @@ def main():
     core_api = client.CoreV1Api()
     app_api = client.AppsV1Api()
 
+    custom_object_api = client.CustomObjectsApi()
+    previous_luola_bot_resources = custom_object_api.list_cluster_custom_object(group="luolabot.tg", version="v1", plural="luolabots")
+    
     while True:
         deployments = app_api.list_deployment_for_all_namespaces()
         operator_namespace = "default"
@@ -155,26 +167,31 @@ def main():
                 namespace = deployment.metadata.namespace
                 break
     
-        custom_object_api = client.CustomObjectsApi()
         luola_bot_resources = custom_object_api.list_cluster_custom_object(group="luolabot.tg", version="v1", plural="luolabots")
     
         if "items" in luola_bot_resources.keys():
             logging.info("Found following luolabot custom resources: {}".format(luola_bot_resources["items"]))
             for luola_bot_resource in luola_bot_resources["items"]:
 
+                force_reconciliation = False
+                if "items" in luola_bot_resources.keys():
+                    force_reconciliation = check_custom_resource_changes(luola_bot_resource, previous_luola_bot_resources["items"])
+                
                 reconciled_resources = []
                 
                 #Config
-                if check_k8s_resource_and_create_if_missing("secret", luola_bot_resource, core_api):
+                if check_k8s_resource_and_create_if_missing("secret", luola_bot_resource, core_api, force_reconciliation=force_reconciliation):
                     reconciled_resources.append("secret")
 
                 #Deployment
-                force_deployment_reconciliation = False
+                force_deployment_reconciliation = force_reconciliation
                 if "secret" in reconciled_resources:
                     force_deployment_reconciliation = True
                 if check_k8s_resource_and_create_if_missing("deployment", luola_bot_resource, app_api, force_reconciliation=force_deployment_reconciliation):
                     reconciled_resources.append("deployment")
 
+        previous_luola_bot_resources = luola_bot_resources
+                    
         sleep_time=15
         logging.info("Sleeping {} seconds before next check for new luolabot custom resources.".format(sleep_time))
         time.sleep(sleep_time)
