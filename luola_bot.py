@@ -17,6 +17,7 @@ import yaml
 DND_API_URL = "https://www.dnd5eapi.co/api"
 db_apis = [DND_API_URL]
 allowed_users = []
+writable_api = None
 socketserver.TCPServer.allow_reuse_address = True
 
 # function to handle the /start command
@@ -45,6 +46,14 @@ def only_allowed_users(func):
         else:
             await args[0].message.reply_text(f'User {user} not in allowed users.')
     return check_allowed_users
+
+def only_if_writable_api_exists(func):
+    async def execute_command_if_writable_api_exists(*args, **kwargs):
+        if writable_api != None:
+            await func(*args, **kwargs)
+        else:
+            await args[0].message.reply_text(f'There is no writable DB :(')
+    return execute_command_if_writable_api_exists
 
 def get_category(command):
     command_split = command.split()
@@ -76,7 +85,7 @@ def add_content(command, category, reply, help):
         else:
             content["_id"] = content["name"].lower().replace("'", '').replace(' ' , '-')
             headers = {"Content-Type": "application/json"}
-            resp = req.post(f"{db_apis[1]}/{category}", data=str(content).replace("'", '"').replace("’", "'"), headers=headers)
+            resp = req.post(f"{writable_api}/{category}", data=str(content).replace("'", '"').replace("’", "'"), headers=headers)
             if resp.status_code == 201:
                 reply = f"{reply}Added new content to the db: {content['name']}"
             else:
@@ -103,6 +112,7 @@ def check_content_existence(url):
             reply += ', content does not exist'
     return reply, exists
 
+@only_if_writable_api_exists
 @only_allowed_users
 async def add(update, context):
     help = 'Usage /add <category-of-the-new-thing-to-add-eg-equipment-or-monsters> <data-in-json>\nThe <data-in-json> needs to have at least name as attribute. There might be additional fields needed when displaying the newly added content. I will try to handle these in the future.\nExample: /add monsters {"name": "Peijooni", "actions": [{"name": "Claw attack", "desc": "1d6 + 2 piercing damage"}]}'
@@ -115,6 +125,7 @@ async def add(update, context):
         reply = add_content(update.message.text, category, reply, help)
     await update.message.reply_text(reply)
 
+@only_if_writable_api_exists
 @only_allowed_users
 async def rm(update, context):
     help = 'Usage: /rm <category-of-the-new-thing-to-add-eg-equipment-or-monsters> <name-or-index-of-the-object-to-be-deleted>'
@@ -312,6 +323,7 @@ def parse_config(config_file):
 
 def set_db_apis(settings):
     api_list = db_apis
+    write_api = writable_api
     if ("disable_default_db_api" in settings.keys()) and (settings["disable_default_db_api"] == True):
         logging.info(f'Default database API {DND_API_URL} will be disabled')
         api_list = []
@@ -323,7 +335,12 @@ def set_db_apis(settings):
                 new_api_split = new_api.split("://")
                 new_api="{}://{}:{}@{}".format(new_api_split[0], api["username"], api["password"], new_api_split[1])
             api_list.append(new_api)
-    return api_list
+            if (write_api == None) and (api["writable"] == True):
+                logging.info(f"Adding a writable DB API: {re.sub(r':[^/].*@', ':<password-hidden>@', new_api)}")
+                write_api = new_api
+            elif write_api != None:
+                logging.info(f'There already is a writable api: {write_api}. Not adding a new one.')
+    return api_list, write_api
 
 def set_allowed_users(settings):
     if 'privileged_users' in settings.keys():
@@ -352,7 +369,9 @@ def main():
         logging.error("Problem with settings. Exiting.")
         return
 
-    db_apis = set_db_apis(settings)
+    global db_apis
+    global writable_api
+    db_apis, writable_api = set_db_apis(settings)
     if db_apis == []:
         logging.error("Default database API was disabled and no custom APIs were defined. There is nothing to look data from, so I'm exiting.")
         return
