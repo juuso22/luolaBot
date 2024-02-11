@@ -136,4 +136,3 @@ LuolaBot can be developped in a nix shell.
 
 ## TODO
 
-1. Make `db_apis.writable` to actually have some effect.

@@ -45,3 +45,5 @@ spec:
                       type: string
                     passwordSecret:
                       type: string
+                    writable:
+                      type: boolean
