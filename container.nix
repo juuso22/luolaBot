@@ -1,6 +1,8 @@
-{ imagename ? "luolabot" }:
+{ imagename ? "luolabot" {},
+  pkgs ? import (fetchTarball https://github.com/NixOS/nixpkgs/archive/refs/tags/23.11.tar.gz) {}
+}:
+
 let
-  pkgs = import (fetchTarball https://github.com/NixOS/nixpkgs/archive/refs/tags/23.11.tar.gz) {};
   luola-bot-packages = import ./default.nix {};
   luolabot = pkgs.stdenv.mkDerivation {
     name = "luolaBot";
