@@ -98,7 +98,26 @@ docker load < result
 docker image tag <name-you-chose-earlier>:<tag-from-the-output-of-previous-command> <name-you-chose-earlier>:<tag-of-your-choice>
 ```
 
-Additionally there is a k8s manifest to deploy that image as a deployment. For a luolabot container to work, a config file has to be mounted at `/etc/luolabot/luolabot.yaml`. When using k8s, the config should be stored as a secret called `luola-bot-config`. For configuration options, see the "Configuration" section below.
+Additionally there is a k8s manifest to deploy that image as a deployment. For a luolabot container to work, a config file has to be mounted at `/etc/luolabot/luolabot.yaml`. 
+
+### K8s operator way
+
+To deploy a luolaBot container on k8s, one can use luolabot's k8s operator. For that, one should deployt the manifests in the `manifests` firecotry to k8s. Then one needs to deploy a custom resource of kind `luolabot`. A schema-ish for the custom resource can be found under 'Configuration: k8s custom luolabot resource'.
+
+#### Author's own deployment
+
+I deploy the bot using ArgoCD with a custom CouchDB on k8s. To setup the bot, I do the following:
+
+```
+argocd app create luolabot --repo https://github.com/juuso22/luolaBot.git --path manifests --dest-server <server>
+helm repo add couchdb https://apache.github.io/couchdb-helm
+helm repo update
+helm install luola-couch couchdb/couchdb   --version=4.5.0   --set couchdbConfig.couchdb.uuid=$(curl https://www.uuidgenerator.net/api/version4 2>/dev/null | tr -d -)
+#The next 3 command require files that you need to create: the kubeconfig you need to figure out depending on your k8s installation. I have added hints for the other 2
+kubectl create secret generic --from-file kubeconf.yaml luola-bot-kube-config
+kubectl create secret generic --from-file token luola-bot-token #Look at 'Configuration: k8s custom luolabot resource' in this README to figure out the content of the token file.
+kubectl create secret generic --from-file password luola-couch-pw #The helm install command helps to find content to create the password file
+```
 
 ## Configuration
 
@@ -107,7 +126,7 @@ Here is a schema-ish for a luolabot yaml configuration file:
 ```
 token: "<your-bot-token>"
 privileged_users:
-  - <tg-username->
+  - <tg-username>
 disable_default_db_api: <boolean>
 db_apis:
   - url: "url:port"
@@ -125,6 +144,31 @@ By default, luolabot looks for a configfile called `luolabot.yaml` in the same d
 python luola_bot.py --config /path/to/config.yaml
 ```
 
+### k8s custom luolabot resource
+
+Here is a schema-ish for a luolabot k8s custom resource:
+
+```
+apiVersion: luolabot.tg/v1
+kind: LuolaBot
+metadata:
+  name: <name-of-your-choosing>
+spec:
+  botTokenSecret: <secret-containing-the-bot token>
+  image: <luolabot-container-image-eg: ghcr.io/juuso22/luolabot:0.0.5>
+  privileged_users:
+  - <list-of-users>
+ db_apis:
+  - url: "<url>:<port>"
+    username: "<username>"
+    passwordSecret: "<secret-containing-the-db-password>"
+    writable: true
+```
+
+The token secret needs to be of form `token: <token-value>`.
+
+For custom database password secrets need to be of form `password: <password>`.
+
 ## Development
 
 LuolaBot can be developped in a nix shell. 
@@ -136,3 +180,5 @@ LuolaBot can be developped in a nix shell.
 
 ## TODO
 
+* Make operator deploy CouchDb, if needed
+* Try to figure out is there a 'canonical' way to pass the kubeconfig to the operator
