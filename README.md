@@ -101,7 +101,7 @@ Additionally there is a k8s manifest to deploy that image as a deployment. For a
 
 ### K8s operator way
 
-To deploy a luolaBot container on k8s, one can use luolabot's k8s operator. For that, one should deployt the manifests in the `manifests` firecotry to k8s. Then one needs to deploy a custom resource of kind `luolabot`. A schema-ish for the custom resource can be found under 'Configuration: k8s custom luolabot resource'.
+To deploy a luolaBot container on k8s, one can use luolabot's k8s operator. For that, one should deploy the manifests in the `manifests` directory to k8s. Then one needs to deploy a custom resource of kind `luolabot`. A schema-ish for the custom resource can be found under 'Configuration: k8s custom luolabot resource'.
 
 #### Author's own deployment
 
