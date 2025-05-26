@@ -66,7 +66,6 @@ pip install requests
 pip install aiohttp
 pip install python-telegram-bot
 pip install pyyaml
-pip install habot
 ```
 
 Get a Telegram bot token from botFather.
